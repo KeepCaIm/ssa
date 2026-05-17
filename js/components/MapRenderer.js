@@ -1,0 +1,157 @@
+// @ts-nocheck
+import { STELLARIS_UI } from '../core/Theme.js';
+import { ParadoxNameResolver } from '../core/NameResolver.js';
+
+export class MapRenderer {
+  constructor(canvas, ctx, camera) {
+    this.canvas = canvas; this.ctx = ctx; this.camera = camera;
+    this.interval = 100;
+    this.checkedIdsSet = new Set(); this.checkedEmpireIdsSet = new Set(); 
+    this.activeTransitFilter = 'none'; 
+  }
+
+  drawGrid() {
+    const ctx = this.ctx;
+    const colors = STELLARIS_UI.colors;
+    const step = Math.round(this.interval * this.camera.zoom);
+    ctx.strokeStyle = colors.grid; ctx.lineWidth = 1; ctx.beginPath();
+    const startX = Math.round(this.camera.panX % step); const startY = Math.round(this.camera.panY % step);
+    for (let x = startX; x < this.canvas.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, this.canvas.height); }
+    for (let y = startY; y < this.canvas.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(this.canvas.width, y); }
+    ctx.stroke();
+  }
+
+  drawHyperlanes(systems) {
+    const ctx = this.ctx;
+    const colors = STELLARIS_UI.colors;
+    const isFilter = this.checkedEmpireIdsSet.size > 0;
+
+    systems.forEach(s => {
+      if (!s.linksArray) return;
+      const srcScreen = this.camera.worldToScreen(s.mapX, s.mapY);
+      const isSrcVis = !isFilter || this.checkedEmpireIdsSet.has(String(s.owner).trim());
+
+      s.linksArray.forEach(targetId => {
+        const target = systems.find(t => String(t.id) === String(targetId));
+        if (target) {
+          const destScreen = this.camera.worldToScreen(target.mapX, target.mapY);
+          if (srcScreen.x < 0 && destScreen.x < 0) return;
+          if (srcScreen.x > this.canvas.width && destScreen.x > this.canvas.width) return;
+          
+          const isDestVis = !isFilter || this.checkedEmpireIdsSet.has(String(target.owner).trim());
+          ctx.beginPath(); ctx.lineWidth = 1;
+
+          if (isSrcVis && isDestVis) {
+            ctx.strokeStyle = colors.hyperlane; 
+          } else {
+            ctx.strokeStyle = 'rgba(18, 48, 43, 0.22)'; 
+          }
+          ctx.moveTo(srcScreen.x, srcScreen.y); ctx.lineTo(destScreen.x, destScreen.y); ctx.stroke();
+        }
+      });
+    });
+  }
+
+  // FIXED: Flawless wormhole connector linking systems strictly by matching index parameters
+  drawWormholeLinks(systems) {
+    const ctx = this.ctx;
+    const whSystems = systems.filter(s => s.fastTravel && s.fastTravel.wormholeGlobalIndex !== null && s.fastTravel.wormholeGlobalIndex !== undefined);
+    
+    ctx.save();
+    ctx.strokeStyle = '#e88024'; 
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]); // Clean distinct dashboard style dash lines array 
+
+    const drawnPairsTrack = new Set();
+
+    whSystems.forEach(s => {
+      if (drawnPairsTrack.has(s.id)) return;
+      
+      const targetIndex = s.fastTravel.wormholeTargetIndex;
+      if (targetIndex === null || targetIndex === undefined) return;
+
+      // FIXED: Locate the system holding the precise twin target bypass index reference 
+      const partner = whSystems.find(t => t.fastTravel && t.fastTravel.wormholeGlobalIndex === targetIndex);
+
+      if (partner) {
+        const p1 = this.camera.worldToScreen(s.mapX, s.mapY);
+        const p2 = this.camera.worldToScreen(partner.mapX, partner.mapY);
+        
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+
+        drawnPairsTrack.add(s.id);
+        drawnPairsTrack.add(partner.id);
+      }
+    });
+    ctx.restore();
+  }
+
+  drawSystems(systems, checkedIdsSet, empires) {
+    const ctx = this.ctx;
+    const colors = STELLARIS_UI.colors;
+    const filterKey = this.activeTransitFilter;
+    const isTransitActive = filterKey !== 'none';
+    const isFilter = this.checkedEmpireIdsSet.size > 0;
+    
+    systems.forEach(s => {
+      const pos = this.camera.worldToScreen(s.mapX, s.mapY);
+      const offset = 150;
+      if (pos.x < -offset || pos.x > this.canvas.width + offset || pos.y < -offset || pos.y > this.canvas.height + offset) return;
+
+      const isChecked = checkedIdsSet.has(String(s.id));
+      const isVis = !isFilter || this.checkedEmpireIdsSet.has(String(s.owner).trim());
+      const hasTargetTransit = isTransitActive && s.fastTravel && s.fastTravel[filterKey] === true;
+      const r = 4;
+
+      if (isTransitActive) {
+        if (hasTargetTransit) {
+          ctx.fillStyle = colors.selected; 
+          ctx.beginPath(); ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2); ctx.fill();
+          
+          ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${STELLARIS_UI.font}`;
+          ctx.textAlign = 'center';
+          const emp = empires.find(e => String(e.id).trim() === String(s.owner).trim());
+          const tag = emp ? `[${ParadoxNameResolver.getEmpireTag(emp.name)}] ` : "";
+          ctx.fillText(`${tag}${s.name}`, pos.x, pos.y - 14);
+        } else {
+          ctx.fillStyle = 'rgba(60, 219, 180, 0.35)'; 
+          ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
+          
+          ctx.fillStyle = 'rgba(150, 179, 175, 0.30)'; ctx.font = `9px ${STELLARIS_UI.font}`;
+          ctx.textAlign = 'center';
+          ctx.fillText(s.name, pos.x, pos.y - 14);
+        }
+      } else {
+        if (!isVis) {
+          ctx.fillStyle = 'rgba(60, 219, 180, 0.35)'; 
+          ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
+          
+          ctx.fillStyle = 'rgba(150, 179, 175, 0.30)'; ctx.font = `9px ${STELLARIS_UI.font}`;
+          ctx.textAlign = 'center';
+          ctx.fillText(s.name, pos.x, pos.y - 14);
+        } else {
+          if (isChecked) {
+            ctx.fillStyle = colors.selected; 
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = colors.selected; ctx.font = `bold 12px ${STELLARIS_UI.font}`;
+          } else {
+            ctx.fillStyle = colors.borderAccent; 
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = colors.textMuted; ctx.font = `bold 11px ${STELLARIS_UI.font}`;
+          }
+          ctx.textAlign = 'center';
+          const emp = empires.find(e => String(e.id).trim() === String(s.owner).trim());
+          const tag = emp ? `[${ParadoxNameResolver.getEmpireTag(emp.name)}] ` : "";
+          ctx.fillText(`${tag}${s.name}`, pos.x, pos.y - 14);
+        }
+      }
+    });
+  }
+
+  clear() {
+    this.ctx.fillStyle = STELLARIS_UI.colors.bg;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+}
