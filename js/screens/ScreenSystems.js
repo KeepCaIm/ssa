@@ -22,12 +22,14 @@ export class ScreenSystems {
       { id: 'starYieldsPayload', title: 'Star Yields', width: '12%', sortable: true, render: SystemRenderers.renderStarYields },
       { id: 'resourcesPayload', title: 'System Yields', width: '15%', sortable: true, render: SystemRenderers.renderSplitResources },
       { id: 'bodies', title: 'Bodies', width: '5%', sortable: true, render: SystemRenderers.renderBodies },
-      { id: 'hasMoltenWorld', title: 'Molten', width: '5%', sortable: true, render: SystemRenderers.renderMolten },
-      { id: 'megastructures', title: 'Megastructure', width: '14%', sortable: true, render: (v, r) => SystemRenderers.renderMegastructures(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) },
+      { id: 'moltenArc', title: 'Molten (Arc Deposits)', width: '10%', sortable: true, render: SystemRenderers.renderMoltenArc },
+      { id: 'megastructures', title: 'Megastructure', width: '12%', sortable: true, render: (v, r) => SystemRenderers.renderMegastructures(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) },
       { id: 'starbaseLevel', title: 'Starbase', width: '5%', sortable: true, render: v => {
-          const s = document.createElement('span'); s.innerText = String(v).toUpperCase();
+          const s = document.createElement('span'); 
+          s.innerText = String(v).toUpperCase();
           s.style.color = (v !== "none" && v !== "outpost") ? '#ffb900' : '#96b3af';
-          if (v !== "none" && v !== "outpost") s.style.fontWeight = 'bold'; return s;
+          if (v !== "none" && v !== "outpost") s.style.fontWeight = 'bold'; 
+          return s;
       }},
       { id: 'fastTravel', title: 'Fast Transit', width: '10%', sortable: true, render: (v, r) => SystemRenderers.renderFastTravel(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) }
     ];
@@ -35,20 +37,22 @@ export class ScreenSystems {
     this.tableInstance = new SciFiTable(cols, (rowData, isChecked) => {
       if (isChecked) this.activeSystemIdsSet.add(String(rowData.id).trim());
       else this.activeSystemIdsSet.delete(String(rowData.id).trim());
-      this.onSystemSelectionChange();
+      if (this.onSystemSelectionChange) this.onSystemSelectionChange();
     });
 
     this.tableInstance.onSort((sortId, isAsc) => {
-      this.customFilterTargetValue = null; this.currentSortId = sortId; this.currentSortAsc = isAsc; 
-      if (this.onSortStateChange) this.onSortStateChange(sortId, isAsc); this.refreshDataPayload();
+      this.customFilterTargetValue = null; this.currentSortId = sortId; 
+      const targetReverseArray = ['starYieldsPayload', 'resourcesPayload', 'bodies', 'moltenArc'];
+      this.currentSortAsc = targetReverseArray.includes(sortId) ? !isAsc : isAsc; 
+      if (this.onSortStateChange) this.onSortStateChange(this.currentSortId, this.currentSortAsc); 
+      this.refreshDataPayload();
     });
 
     this.viewport.appendChild(this.tableInstance.elNode); this.refreshDataPayload();
   }
 
   executeCustomBadgeSort(sortType, targetValue) {
-    this.currentSortId = sortType; this.currentSortAsc = false; 
-    this.customFilterTargetValue = targetValue;
+    this.currentSortId = sortType; this.currentSortAsc = false; this.customFilterTargetValue = targetValue;
     if (this.onSortStateChange) this.onSortStateChange(sortType, false); this.refreshDataPayload();
   }
 
@@ -67,28 +71,32 @@ export class ScreenSystems {
 
     rows.sort((a, b) => {
       let valA = a[sid]; let valB = b[sid];
-      
       if (sid === 'star_type') { valA = a.star ? a.star.type : ""; valB = b.star ? b.star.type : ""; }
       else if (sid === 'resourcesPayload') { valA = a.totalResources; valB = b.totalResources; }
-      else if (sid === 'starYieldsPayload') { valA = a.star ? a.star.totalStarRes : 0; valB = b.star ? b.star.totalStarRes : 0; }
+      else if (sid === 'starYieldsPayload') { valA = a.star ? a.star.totalStarRes : 0; valB = b.star ? b.star.totalStarRes : 0; } 
+      else if (sid === 'moltenArc') {
+        const hasMoltenA = a.hasMoltenWorld === true ? 1 : 0;
+        const hasMoltenB = b.hasMoltenWorld === true ? 1 : 0;
+        if (hasMoltenA !== hasMoltenB) return (hasMoltenA - hasMoltenB) * mult; 
+        return ((a.arcEligibleCount || 0) - (b.arcEligibleCount || 0)) * mult;
+      }
       else if (sid === 'megastructures') {
-        valA = a.megastructures ? a.megastructures.length : 0; valB = b.megastructures ? b.megastructures.length : 0;
-        return (parseFloat(valA) - parseFloat(valB)) * mult;
-      }
+        const hasA = a.megastructures?.length > 0 ? 1 : 0; const hasB = b.megastructures?.length > 0 ? 1 : 0;
+        if (hasA !== hasB) return hasA ? -1 : 1;
+        return ((a.megastructures?.length || 0) - (b.megastructures?.length || 0)) * mult;
+      } 
       else if (sid === 'fastTravel') {
-        let countA = 0; let countB = 0;
-        if (a.fastTravel) { if (a.fastTravel.wormhole) countA++; if (a.fastTravel.gate) countA++; if (a.fastTravel.lgate) countA++; if (a.fastTravel.shroud) countA++; }
-        if (b.fastTravel) { if (b.fastTravel.wormhole) countB++; if (b.fastTravel.gate) countB++; if (b.fastTravel.lgate) countB++; if (b.fastTravel.shroud) countB++; }
-        return (countA - countB) * mult;
-      }
-      // FIXED: Overhauled single-badge mapping to check rawType strings flawlessly instead of localized display text
-      else if (sid === 'mega_filter') {
+        let cA = 0, cB = 0;
+        if (a.fastTravel) { if (a.fastTravel.wormhole) cA++; if (a.fastTravel.gate) cA++; if (a.fastTravel.lgate) cA++; if (a.fastTravel.shroud) cA++; }
+        if (b.fastTravel) { if (b.fastTravel.wormhole) cB++; if (b.fastTravel.gate) cB++; if (b.fastTravel.lgate) cB++; if (b.fastTravel.shroud) cB++; }
+        if ((cA > 0 ? 1 : 0) !== (cB > 0 ? 1 : 0)) return cA > 0 ? -1 : 1;
+        return (cA - cB) * mult;
+      } else if (sid === 'mega_filter') {
         const hasA = a.megastructures?.some(m => String(m.rawType).toLowerCase() === String(this.customFilterTargetValue).toLowerCase()) ? 1 : 0;
         const hasB = b.megastructures?.some(m => String(m.rawType).toLowerCase() === String(this.customFilterTargetValue).toLowerCase()) ? 1 : 0;
         if (hasA === hasB) return String(a.name).localeCompare(String(b.name));
         return (hasA - hasB) * mult;
-      }
-      else if (sid.startsWith('ft_')) {
+      } else if (sid.startsWith('ft_')) {
         const flagKey = sid.replace('ft_', '');
         const hasA = a.fastTravel && a.fastTravel[flagKey] ? 1 : 0;
         const hasB = b.fastTravel && b.fastTravel[flagKey] ? 1 : 0;
@@ -99,16 +107,11 @@ export class ScreenSystems {
       if (sid === 'id' || sid === 'bodies' || sid === 'resourcesPayload' || sid === 'starYieldsPayload') {
         return (parseFloat(valA || 0) - parseFloat(valB || 0)) * mult;
       }
-      if (sid === 'hasMoltenWorld') { return ((valA ? 1 : 0) - (valB ? 1 : 0)) * mult; }
       return String(valA || "").toLowerCase().localeCompare(String(valB || "").toLowerCase()) * mult;
     });
 
     this.tableInstance.sortColumnId = this.currentSortId; this.tableInstance.sortAscending = this.currentSortAsc;
     this.tableInstance.buildHeader(); this.tableInstance.setData(rows, this.activeSystemIdsSet);
-
-    // FIXED: Force automated immediate scroll focus jump straight back to index top on every sorting mutate execution
-    if (this.tableInstance && this.tableInstance.wrapper) {
-      this.tableInstance.wrapper.scrollTop = 0;
-    }
+    if (this.tableInstance && this.tableInstance.wrapper) this.tableInstance.wrapper.scrollTop = 0;
   }
 }

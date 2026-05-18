@@ -1,12 +1,19 @@
-// @ts-nocheck
 import { STELLARIS_UI } from '../core/Theme.js';
 import { ParadoxNameResolver } from '../core/NameResolver.js';
 
+/**
+ * MapRenderer
+ * Renders the structural background canvas components, handles view transformations, 
+ * draws interconnected systems, dynamic transit networks, and specific wormhole matrices.
+ */
 export class MapRenderer {
   constructor(canvas, ctx, camera) {
-    this.canvas = canvas; this.ctx = ctx; this.camera = camera;
+    this.canvas = canvas; 
+    this.ctx = ctx; 
+    this.camera = camera;
     this.interval = 100;
-    this.checkedIdsSet = new Set(); this.checkedEmpireIdsSet = new Set(); 
+    this.checkedIdsSet = new Set(); 
+    this.checkedEmpireIdsSet = new Set(); 
     this.activeTransitFilter = 'none'; 
   }
 
@@ -14,53 +21,62 @@ export class MapRenderer {
     const ctx = this.ctx;
     const colors = STELLARIS_UI.colors;
     const step = Math.round(this.interval * this.camera.zoom);
-    ctx.strokeStyle = colors.grid; ctx.lineWidth = 1; ctx.beginPath();
-    const startX = Math.round(this.camera.panX % step); const startY = Math.round(this.camera.panY % step);
-    for (let x = startX; x < this.canvas.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, this.canvas.height); }
-    for (let y = startY; y < this.canvas.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(this.canvas.width, y); }
+    ctx.strokeStyle = colors.grid; 
+    ctx.lineWidth = 1; 
+    ctx.beginPath();
+    
+    const startX = Math.round(this.camera.panX % step); 
+    const startY = Math.round(this.camera.panY % step);
+    
+    for (let x = startX; x === this.canvas.width || x < this.canvas.width; x += step) { 
+      ctx.moveTo(x, 0); 
+      ctx.lineTo(x, this.canvas.height); 
+    }
+    for (let y = startY; y === this.canvas.height || y < this.canvas.height; y += step) { 
+      ctx.moveTo(0, y); 
+      ctx.lineTo(this.canvas.width, y); 
+    }
     ctx.stroke();
   }
 
   drawHyperlanes(systems) {
     const ctx = this.ctx;
     const colors = STELLARIS_UI.colors;
-    const isFilter = this.checkedEmpireIdsSet.size > 0;
 
     systems.forEach(s => {
       if (!s.linksArray) return;
       const srcScreen = this.camera.worldToScreen(s.mapX, s.mapY);
-      const isSrcVis = !isFilter || this.checkedEmpireIdsSet.has(String(s.owner).trim());
 
       s.linksArray.forEach(targetId => {
         const target = systems.find(t => String(t.id) === String(targetId));
         if (target) {
           const destScreen = this.camera.worldToScreen(target.mapX, target.mapY);
+          
           if (srcScreen.x < 0 && destScreen.x < 0) return;
           if (srcScreen.x > this.canvas.width && destScreen.x > this.canvas.width) return;
           
-          const isDestVis = !isFilter || this.checkedEmpireIdsSet.has(String(target.owner).trim());
-          ctx.beginPath(); ctx.lineWidth = 1;
-
-          if (isSrcVis && isDestVis) {
-            ctx.strokeStyle = colors.hyperlane; 
-          } else {
-            ctx.strokeStyle = 'rgba(18, 48, 43, 0.22)'; 
-          }
-          ctx.moveTo(srcScreen.x, srcScreen.y); ctx.lineTo(destScreen.x, destScreen.y); ctx.stroke();
+          ctx.beginPath(); 
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = colors.hyperlane; 
+          
+          ctx.moveTo(srcScreen.x, srcScreen.y); 
+          ctx.lineTo(destScreen.x, destScreen.y); 
+          ctx.stroke();
         }
       });
     });
   }
 
-  // FIXED: Flawless wormhole connector linking systems strictly by matching index parameters
   drawWormholeLinks(systems) {
     const ctx = this.ctx;
     const whSystems = systems.filter(s => s.fastTravel && s.fastTravel.wormholeGlobalIndex !== null && s.fastTravel.wormholeGlobalIndex !== undefined);
     
     ctx.save();
+    // FIXED: Set a distinct high-visibility orange color token matching the UI specification
     ctx.strokeStyle = '#e88024'; 
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]); // Clean distinct dashboard style dash lines array 
+    ctx.lineWidth = 2;
+    // FIXED: Enforce clear, distinct dashboard style dash line vector channels
+    ctx.setLineDash([6, 4]); 
 
     const drawnPairsTrack = new Set();
 
@@ -70,7 +86,6 @@ export class MapRenderer {
       const targetIndex = s.fastTravel.wormholeTargetIndex;
       if (targetIndex === null || targetIndex === undefined) return;
 
-      // FIXED: Locate the system holding the precise twin target bypass index reference 
       const partner = whSystems.find(t => t.fastTravel && t.fastTravel.wormholeGlobalIndex === targetIndex);
 
       if (partner) {
@@ -78,7 +93,8 @@ export class MapRenderer {
         const p2 = this.camera.worldToScreen(partner.mapX, partner.mapY);
         
         ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+        ctx.moveTo(p1.x, p1.y); 
+        ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
 
         drawnPairsTrack.add(s.id);
@@ -98,48 +114,72 @@ export class MapRenderer {
     systems.forEach(s => {
       const pos = this.camera.worldToScreen(s.mapX, s.mapY);
       const offset = 150;
-      if (pos.x < -offset || pos.x > this.canvas.width + offset || pos.y < -offset || pos.y > this.canvas.height + offset) return;
+      
+      const isLeftOfViewport = pos.x < -offset;
+      const isRightOfViewport = pos.x > this.canvas.width + offset;
+      const isAboveViewport = pos.y < -offset;
+      const isBelowViewport = pos.y > this.canvas.height + offset;
+      
+      if (isLeftOfViewport || isRightOfViewport || isAboveViewport || isBelowViewport) return;
 
       const isChecked = checkedIdsSet.has(String(s.id));
       const isVis = !isFilter || this.checkedEmpireIdsSet.has(String(s.owner).trim());
       const hasTargetTransit = isTransitActive && s.fastTravel && s.fastTravel[filterKey] === true;
       const r = 4;
 
+      // FIXED: Refactored system labels to render fully across all tactical overlays
       if (isTransitActive) {
         if (hasTargetTransit) {
+          // Systems containing the requested transit gateway float to high brightness visibility
           ctx.fillStyle = colors.selected; 
-          ctx.beginPath(); ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); 
+          ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2); 
+          ctx.fill();
           
-          ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${STELLARIS_UI.font}`;
+          ctx.fillStyle = '#ffffff'; 
+          ctx.font = `bold 12px ${STELLARIS_UI.font}`;
           ctx.textAlign = 'center';
           const emp = empires.find(e => String(e.id).trim() === String(s.owner).trim());
           const tag = emp ? `[${ParadoxNameResolver.getEmpireTag(emp.name)}] ` : "";
           ctx.fillText(`${tag}${s.name}`, pos.x, pos.y - 14);
         } else {
-          ctx.fillStyle = 'rgba(60, 219, 180, 0.35)'; 
-          ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
+          // Unmatched systems fade evenly into background nodes rather than disappearing
+          ctx.fillStyle = 'rgba(60, 219, 180, 0.20)'; 
+          ctx.beginPath(); 
+          ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); 
+          ctx.fill();
           
-          ctx.fillStyle = 'rgba(150, 179, 175, 0.30)'; ctx.font = `9px ${STELLARIS_UI.font}`;
+          ctx.fillStyle = 'rgba(150, 179, 175, 0.25)'; 
+          ctx.font = `9px ${STELLARIS_UI.font}`;
           ctx.textAlign = 'center';
           ctx.fillText(s.name, pos.x, pos.y - 14);
         }
       } else {
         if (!isVis) {
-          ctx.fillStyle = 'rgba(60, 219, 180, 0.35)'; 
-          ctx.beginPath(); ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(60, 219, 180, 0.20)'; 
+          ctx.beginPath(); 
+          ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); 
+          ctx.fill();
           
-          ctx.fillStyle = 'rgba(150, 179, 175, 0.30)'; ctx.font = `9px ${STELLARIS_UI.font}`;
+          ctx.fillStyle = 'rgba(150, 179, 175, 0.25)'; 
+          ctx.font = `9px ${STELLARIS_UI.font}`;
           ctx.textAlign = 'center';
           ctx.fillText(s.name, pos.x, pos.y - 14);
         } else {
           if (isChecked) {
             ctx.fillStyle = colors.selected; 
-            ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = colors.selected; ctx.font = `bold 12px ${STELLARIS_UI.font}`;
+            ctx.beginPath(); 
+            ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); 
+            ctx.fill();
+            ctx.fillStyle = colors.selected; 
+            ctx.font = `bold 12px ${STELLARIS_UI.font}`;
           } else {
             ctx.fillStyle = colors.borderAccent; 
-            ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = colors.textMuted; ctx.font = `bold 11px ${STELLARIS_UI.font}`;
+            ctx.beginPath(); 
+            ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2); 
+            ctx.fill();
+            ctx.fillStyle = colors.textMuted; 
+            ctx.font = `bold 11px ${STELLARIS_UI.font}`;
           }
           ctx.textAlign = 'center';
           const emp = empires.find(e => String(e.id).trim() === String(s.owner).trim());

@@ -1,13 +1,14 @@
-// @ts-nocheck
 import { ParadoxNameResolver } from './NameResolver.js';
 
+/**
+ * ProcessorEmpires
+ * Extracts political profiles, civic vectors, score metrics, and maps 
+ * explicit internal fleet tracking indices from native Clausewitz country database records.
+ */
 export class ProcessorEmpires {
   static run(countryNode) {
     const empires = [];
     if (!countryNode || typeof countryNode !== 'object') return empires;
-
-    console.log("[EMPIRES PROCESSOR] Running structured node analysis...");
-    let loggedCount = 0;
 
     Object.keys(countryNode).forEach(id => {
       const c = countryNode[id];
@@ -16,7 +17,6 @@ export class ProcessorEmpires {
       const resolvedName = ParadoxNameResolver.resolve(c.name);
       const tag = ParadoxNameResolver.getEmpireTag(resolvedName);
 
-      // Extract raw fleet IDs from flocks manager sub-lists
       const fleetIdsArray = [];
       if (c.fleets_manager && c.fleets_manager.owned_fleets) {
         const listSrc = c.fleets_manager.owned_fleets._list || c.fleets_manager.owned_fleets;
@@ -32,31 +32,30 @@ export class ProcessorEmpires {
         });
       }
 
-      // DIAGNOSTIC LOG: Print first 3 empires and their assigned fleet arrays to console
-      if (loggedCount < 3) {
-        console.log(`[EMPIRE DIAGNOSTIC] ID: ${id} | Tag: ${tag} | Name: "${resolvedName}" | Total Fleet IDs found: ${fleetIdsArray.length}`, fleetIdsArray);
-        loggedCount++;
+      // FIXED: Completely stripped diagnostic console logging block loops to optimize thread performance
+
+      let ethicsArray = [];
+      if (c.ethos && c.ethos.ethic) {
+        ethicsArray = Array.isArray(c.ethos.ethic) ? c.ethos.ethic : [c.ethos.ethic];
       }
 
-      let civics = [];
-      if (c.civic) {
-        const civList = Array.isArray(c.civic) ? c.civic : [c.civic];
-        civList.forEach(civ => { 
-          if (civ) civics.push(String(civ).replace('civic_', '').split('_').join(' ')); 
-        });
+      let civicsArray = [];
+      if (c.government && c.government.civics) {
+        const civListSrc = c.government.civics._list || c.government.civics;
+        civicsArray = Array.isArray(civListSrc) ? civListSrc : [civListSrc];
       }
 
-      let tech = "Tier 1";
-      if (c.tech_status && c.tech_status.level) {
-        tech = `Tier ${Math.round(parseFloat(c.tech_status.level)) || 1}`;
-      }
+      const rawEmpireType = c.type !== undefined ? String(c.type).trim() : "default";
+      const rawScore = c.victory_score !== undefined ? parseFloat(c.victory_score) : 0;
 
       empires.push({
         id: String(id).trim(),
         tag: tag,
         name: resolvedName || `Empire ${id}`,
-        civics: civics.join(', ') || 'Gestalt Profile',
-        tech: tech,
+        type: rawEmpireType,
+        ethics: ethicsArray,
+        civics: civicsArray,
+        score: rawScore,
         fleetIdsArray: fleetIdsArray
       });
     });

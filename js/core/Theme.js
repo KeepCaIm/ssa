@@ -1,4 +1,8 @@
-// Standalone design system configuration mapping terminal aesthetics
+/**
+ * STELLARIS_UI
+ * Centralized design system token archive mapping typography, specific asset color channels,
+ * dashboard border glow primitives, and presentation style mixins.
+ */
 export const STELLARIS_UI = {
   font: '"Lucida Grande", "Lucida Sans Unicode", "DejaVu Sans", Arial, sans-serif',
   colors: {
@@ -11,13 +15,25 @@ export const STELLARIS_UI = {
     grid: '#0a1d1b',           
     textHeader: '#8bbfa8',     
     text: '#ffffff',           
-    textSub: '#4fe3da',        
+    textSub: '#5cb3e6',        // High-contrast Slate/Sky Blue for Civics
     textMuted: '#96b3af',      
     high: '#32e632', 
     mid: '#ffb900',  
     low: '#ff4a4a',  
     hyperlane: '#12302b',
-    selected: '#ffb900'
+    selected: '#ffb900',
+    
+    // Core Semantic Empire Type Palette
+    empStandard: '#3cdbb4',    // Vibrant terminal Teal-Green
+    empGeneric: '#8ba5bf',     // Low-saturation Slate Grey for general 🌐 factions
+    empFallen: '#ffb900',      // Deep cosmic gold
+    empEnclave: '#cf5ce6',     // Mystic violet/magenta
+    empCrisis: '#ff3b3b',      // Aggressive war red
+    
+    // Interactive Layout Primitives
+    badgeEmpty: 'rgba(255, 255, 255, 0.15)',
+    rowHoverBg: 'rgba(60, 219, 180, 0.04)',
+    rowHighlightBg: 'rgba(60, 219, 180, 0.15)'
   },
   styles: {
     fullFrame: 'width:100%; height:100%; box-sizing:border-box;',

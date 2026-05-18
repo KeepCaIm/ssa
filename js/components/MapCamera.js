@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Manages map viewport camera transformations, cursor-relative scaling, and bounding box fits
 export class MapCamera {
   constructor(canvas) {

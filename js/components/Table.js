@@ -1,6 +1,10 @@
 import { STELLARIS_UI } from '../core/Theme.js';
 
-// Unified standalone table framework managing scrolling viewports and checkboxes cascades
+/**
+ * SciFiTable
+ * Reusable data grid utilizing global design tokens for dynamic row hovers, 
+ * sticky headers, and pixel-perfect smooth vertical offset targeting.
+ */
 export class SciFiTable {
   constructor(columns, onCheckChange = null) {
     this.columns = columns;
@@ -101,7 +105,7 @@ export class SciFiTable {
               this.sortColumnId = col.id;
               this.sortAscending = true;
             }
-            if (this.onSortCallback) {
+            if (this.onSortCallback !== null) {
               this.onSortCallback(this.sortColumnId, this.sortAscending);
             }
           });
@@ -126,7 +130,8 @@ export class SciFiTable {
       tr.style.transition = 'background 0.1s';
       tr.setAttribute('data-row-id', String(rowData.id));
 
-      tr.addEventListener('mouseenter', () => { tr.style.backgroundColor = 'rgba(60, 219, 180, 0.04)'; });
+      // FIXED: Swapped hardcoded colors out for semantic variables tokens
+      tr.addEventListener('mouseenter', () => { tr.style.backgroundColor = colors.rowHoverBg; });
       tr.addEventListener('mouseleave', () => { tr.style.backgroundColor = 'transparent'; });
 
       this.columns.forEach(col => {
@@ -145,13 +150,13 @@ export class SciFiTable {
           rowCheck.checked = checkedIdsSet.has(String(rowData.id));
           
           rowCheck.addEventListener('change', () => {
-            if (this.onCheckChange) this.onCheckChange(rowData, rowCheck.checked);
+            if (this.onCheckChange !== null) this.onCheckChange(rowData, rowCheck.checked);
           });
           
           td.appendChild(rowCheck);
           this.rowsCache.push({ id: String(rowData.id), input: rowCheck });
         } else {
-          if (col.render) {
+          if (col.render !== undefined && col.render !== null) {
             td.appendChild(col.render(rowData[col.id], rowData));
           } else {
             td.innerText = rowData[col.id] !== undefined ? rowData[col.id] : '';
@@ -176,10 +181,12 @@ export class SciFiTable {
   }
 
   scrollToRowId(id) {
+    const colors = STELLARIS_UI.colors;
     const targetElement = this.tbody.querySelector(`[data-row-id="${id}"]`);
-    if (targetElement) {
+    if (targetElement !== null) {
       targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      targetElement.style.backgroundColor = 'rgba(60, 219, 180, 0.15)';
+      // FIXED: Uses centralization constants
+      targetElement.style.backgroundColor = colors.rowHighlightBg;
       setTimeout(() => { targetElement.style.backgroundColor = 'transparent'; }, 800);
     }
   }
