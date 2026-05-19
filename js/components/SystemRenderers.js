@@ -1,209 +1,109 @@
 import { STELLARIS_UI } from '../core/Theme.js';
+import { SYSTEM_STATIC_REGISTRY } from '../core/SystemConstants.js';
 
-/**
- * SystemRenderers
- * Decoupled visualization suite mapping dense Clausewitz telemetry datasets
- * directly onto responsive, interactive custom DOM component nodes.
- */
 export class SystemRenderers {
   static renderStar(v, row) {
-    const el = document.createElement('div');
-    el.style.cursor = 'help';
-    
-    // FIXED: Safely read from the fallback nested star object if the root column ID mapping returns empty
-    const starObj = (row !== undefined && row.star !== undefined) ? row.star : null;
-    const currentType = (v !== undefined && v !== null && v !== "") ? v : (starObj !== null ? starObj.type : null);
-    
-    if (currentType === null || currentType === undefined || currentType === "") {
-      el.innerText = "☀️ Special Anomaly";
-      el.title = "Non-standard cosmic anomaly or empty coordinate point.";
-      return el;
-    }
+    const el = document.createElement('div'); el.style.cursor = 'help';
+    const starObj = row?.star || null;
+    const currentType = v || starObj?.type || null;
+    if (!currentType) { el.innerText = "☀️ Special Anomaly"; return el; }
 
-    let icon = "☀️";
-    const low = String(currentType).toLowerCase();
-    if (low.includes("black_hole") || low.includes("blackhole") || low.includes("black hole")) {
-      icon = "🕳️";
-    } else if (low.includes("neutron")) {
-      icon = "⚛️";
-    } else if (low.includes("pulsar")) {
-      icon = "⚡";
-    } else if (low.includes("giant") || low.includes("supergiant")) {
-      icon = "💥";
-    }
-    
-    el.innerText = `${icon} ${currentType}`;
-    
-    const b = (starObj !== null && starObj.resourcesBreakdown !== undefined) ? starObj.resourcesBreakdown : { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
-    const starId = starObj !== null ? starObj.id : "Unknown";
-    const starName = starObj !== null ? starObj.name : "Unknown";
-    
-    el.title = `Star ID: ${starId}\nName: ${starName}\nStar Yields:\n⚡ Energy: +${b.e}\n⛏️ Minerals: +${b.m}\n⚛️ Physics: +${b.p}\n🍃 Society: +${b.s}\n⚙️ Engineering: +${b.g}`;
+    const tokens = currentType.split(" / "); const icons = [];
+    tokens.forEach(t => {
+      let ico = "☀️"; const low = t.toLowerCase();
+      if (low.includes("black_hole") || low.includes("blackhole") || low.includes("black hole")) ico = "🕳️";
+      else if (low.includes("neutron")) ico = "⚛️";
+      else if (low.includes("pulsar")) ico = "⚡";
+      else if (low.includes("giant") || low.includes("supergiant") || low.includes("nova")) ico = "💥";
+      icons.push(ico);
+    });
+
+    el.innerText = `${icons.join(" ")} ${currentType}`;
+    const b = starObj?.resourcesBreakdown || { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
+    const idsStr = starObj?.starIds?.length > 0 ? starObj.starIds.join(", ") : (starObj ? starObj.id : "Unknown");
+    el.title = `Star ID(s): ${idsStr}\nName: ${starObj?.name || "Unknown"}\nStar Yields:\n⚡ Energy: +${b.e}\n⛏️ Minerals: +${b.m}\n⚛️ Physics: +${b.p}\n🍃 Society: +${b.s}\n⚙️ Engineering: +${b.g}`;
     return el;
   }
 
   static renderBodies(v, row) {
-    const el = document.createElement('div');
-    el.style.cssText = `cursor:help; font-weight:bold; color:${STELLARIS_UI.colors.textHeader};`;
+    const el = document.createElement('div'); el.style.cssText = `cursor:help; font-weight:bold; color:${STELLARIS_UI.colors.textHeader};`;
     el.innerText = String(v || 0);
-    
-    const hasNoList = !row || !row.celestialList || row.celestialList.length === 0;
-    if (hasNoList) {
-      el.title = "No sub-bodies tracked.";
-    } else {
-      el.title = `Celestial Tree Details:\n${row.celestialList.map(c => `[ID: ${c.id}] ${c.name} (${c.type})`).join('\n')}`;
-    }
+    el.title = !row?.celestialList?.length ? "No sub-bodies tracked." : `Celestial Tree Details:\n${row.celestialList.map(c => `[ID: ${c.id}] ${c.name} (${c.type})`).join('\n')}`;
     return el;
   }
 
   static renderMoltenArc(v, row) {
-    const s = document.createElement('span');
-    s.style.fontWeight = "bold";
-    
-    const hasMolten = row !== undefined && row.hasMoltenWorld === true;
-    if (hasMolten) {
-      const eligibleCount = row.arcEligibleCount || 0;
-      s.innerText = `✓ (${eligibleCount})`; 
-      s.style.color = STELLARIS_UI.colors.high; 
-      s.title = `System contains a Molten World.\nTotal celestial objects eligible for Arc Furnace deposits: ${eligibleCount}`;
-    } else {
-      s.innerText = "✖"; 
-      s.style.color = STELLARIS_UI.colors.badgeEmpty;
-      s.title = "System lacks a Molten World baseline qualification factor.";
-    }
+    const s = document.createElement('span'); s.style.fontWeight = "bold";
+    if (row?.hasMoltenWorld) {
+      s.innerText = `✓ (${row.arcEligibleCount || 0})`; s.style.color = STELLARIS_UI.colors.high;
+      s.title = `System contains a Molten World.\nTotal celestial objects eligible for Arc Furnace deposits: ${row.arcEligibleCount || 0}`;
+    } else { s.innerText = "✖"; s.style.color = STELLARIS_UI.colors.badgeEmpty; s.title = "System lacks a Molten World baseline qualification factor."; }
     return s;
   }
 
   static renderSplitResources(v) {
-    const container = document.createElement('div');
-    container.style.cssText = 'display:flex; gap:6px; align-items:center; font-weight:bold; font-size:11px;';
+    const container = document.createElement('div'); container.style.cssText = 'display:flex; gap:6px; align-items:center; font-weight:bold; font-size:11px;';
     const p = v || { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
-    
     const items = [
-      { isPresent: p.e !== 0 && p.e > 0, val: p.e, ico: "⚡", col: STELLARIS_UI.colors.mid, label: "Energy" },
-      { isPresent: p.m !== 0 && p.m > 0, val: p.m, ico: "⛏️", col: "#e88024", label: "Minerals" },
-      { isPresent: p.a !== 0 && p.a > 0, val: p.a, ico: "🛡️", col: STELLARIS_UI.colors.high, label: "Alloys" },
-      { isPresent: p.p !== 0 && p.p > 0, val: p.p, ico: "⚛️", col: STELLARIS_UI.colors.textSub, label: "Physics" },
-      { isPresent: p.s !== 0 && p.s > 0, val: p.s, ico: "🍃", col: "#5ce681", label: "Society" },
-      { isPresent: p.g !== 0 && p.g > 0, val: p.g, ico: "⚙️", col: "#e6b65c", label: "Engineering" },
-      { isPresent: p.n !== 0 && p.n > 0, val: p.n, ico: "🔮", col: "#b446e3", label: "Specials" }
+      { cond: p.e > 0, val: p.e, ico: "⚡", col: STELLARIS_UI.colors.mid, label: "Energy" },
+      { cond: p.m > 0, val: p.m, ico: "⛏️", col: "#e88024", label: "Minerals" },
+      { cond: p.a > 0, val: p.a, ico: "🛡️", col: STELLARIS_UI.colors.high, label: "Alloys" },
+      { cond: p.p > 0, val: p.p, ico: "⚛️", col: STELLARIS_UI.colors.textSub, label: "Physics" },
+      { cond: p.s > 0, val: p.s, ico: "🍃", col: "#5ce681", label: "Society" },
+      { cond: p.g > 0, val: p.g, ico: "⚙️", col: "#e6b65c", label: "Engineering" },
+      { cond: p.n > 0, val: p.n, ico: "🔮", col: "#b446e3", label: "Specials" }
     ];
-    
     let hasAny = false;
     items.forEach(it => {
-      if (it.isPresent) {
-        hasAny = true; 
-        const span = document.createElement('span');
-        span.innerText = `${it.ico}${it.val}`; 
-        span.style.color = it.col;
-        span.title = `${it.label} Value Node`; 
-        container.appendChild(span);
+      if (it.cond) {
+        hasAny = true; const span = document.createElement('span'); span.innerText = `${it.ico}${it.val}`; span.style.color = it.col; span.title = `${it.label} Value Node`; container.appendChild(span);
       }
     });
-    
-    if (!hasAny) { 
-      container.innerText = "✖"; 
-      container.style.color = STELLARIS_UI.colors.badgeEmpty; 
-    }
+    if (!hasAny) { container.innerText = "✖"; container.style.color = STELLARIS_UI.colors.badgeEmpty; }
     return container;
   }
 
-  static renderStarYields(v, row) {
-    return SystemRenderers.renderSplitResources(row && row.star ? row.star.resourcesBreakdown : null);
-  }
+  static renderStarYields(v, row) { return SystemRenderers.renderSplitResources(row?.star?.resourcesBreakdown || null); }
 
   static renderMegastructures(v, row, onCustomSortTrigger) {
-    const el = document.createElement('div');
-    if (!v || v.length === 0) {
-      el.innerText = "✖"; 
-      el.style.color = STELLARIS_UI.colors.badgeEmpty;
-      return el;
-    }
-
+    const el = document.createElement('div'); if (!v?.length) { el.innerText = "✖"; el.style.color = STELLARIS_UI.colors.badgeEmpty; return el; }
     v.forEach(m => {
-      const b = document.createElement('span');
-      const raw = String(m.rawType || "").toLowerCase();
-      let icon = "🏗️";
-      let name = m.type;
-
-      if (raw.includes("dyson_sphere")) { icon = "🟡"; name = "Dyson Sphere"; }
-      else if (raw.includes("dyson_swarm")) { icon = "🐝"; name = "Dyson Swarm"; }
-      else if (raw.includes("gateway")) { icon = "🚪"; name = "Gateway"; }
-      else if (raw.includes("lgate")) { icon = "🔒"; name = "L-Gate Hub"; }
-      else if (raw.includes("arc_furnace")) { icon = "🔥"; name = "Arc Furnace"; }
-      else if (raw.includes("matter_decompressor")) { icon = "🗜️"; name = "Matter Decompressor"; }
-      else if (raw.includes("quantum_catapult")) { icon = "🎯"; name = "Quantum Catapult"; }
-      else if (raw.includes("habitat")) { icon = "🛸"; name = "Orbital Habitat"; }
-      else if (raw.includes("hyper_relay")) { icon = "⛓️"; name = "Hyper Relay"; }
-      else if (raw.includes("shipyard")) { icon = "⚓"; name = "Mega Shipyard"; }
-      else if (raw.includes("spy_orb")) { icon = "👁️"; name = "Sentry Array"; }
-      else if (raw.includes("strategic")) { icon = "⚔️"; name = "Strategic Coordination"; }
-      else if (raw.includes("think_tank")) { icon = "🧠"; name = "Science Nexus"; }
-      else if (raw.includes("orbital_ring")) { icon = "⭕"; name = "Orbital Ring"; }
-      else if (raw.includes("ring_world")) { icon = "🪐"; name = "Ring World Segment"; }
-      else if (raw.includes("interstellar_assembly")) { icon = "🏛️"; name = "Interstellar Assembly"; }
-      else if (raw.includes("crisis_sphere")) { icon = "💀"; name = "Aetherophasic Engine"; }
-      else if (raw.includes("grand_archive")) { icon = "📚"; name = "Grand Archive"; }
-      else if (raw.includes("dyson_slingshot")) { icon = "☄️"; name = "Dyson Slingshot"; }
-
-      if (raw.includes("ruined") || raw.includes("permanently_ruined")) {
-        name += " [Ruined]";
-      } else if (raw.includes("_0") || raw.includes("_1") || raw.includes("_2") || raw.includes("framework") || raw.includes("core")) {
-        name += " [Frame]";
-      }
+      const b = document.createElement('span'); const raw = String(m.rawType || "").toLowerCase();
+      let icon = "🏗️"; let name = m.type;
+      const match = SYSTEM_STATIC_REGISTRY.megastructures.find(cfg => raw.includes(cfg.key));
+      if (match) { icon = match.icon; name = match.name; }
+      if (raw.includes("ruined")) name += " [Ruined]";
+      else if (raw.includes("_0") || raw.includes("_1") || raw.includes("framework") || raw.includes("core")) name += " [Frame]";
 
       b.innerText = `${icon} ${name}`;
-      const isMuted = raw.includes("ruined");
-      
-      b.style.cssText = STELLARIS_UI.styles.interactiveBadge + `background:${STELLARIS_UI.colors.panelBgLight}; border:1px solid ${isMuted ? STELLARIS_UI.colors.border : STELLARIS_UI.colors.borderAccent};`;
+      b.style.cssText = STELLARIS_UI.styles.interactiveBadge + `background:${STELLARIS_UI.colors.panelBgLight}; border:1px solid ${raw.includes("ruined") ? STELLARIS_UI.colors.border : STELLARIS_UI.colors.borderAccent};`;
       b.title = `Structure ID: ${m.id}\nRaw Class: ${m.rawType}\nEmpire ID: ${m.owner}\n\n[ CLICK TO SORT BY THIS STRUCTURE ]`;
-      
-      b.onclick = (e) => { 
-        e.stopPropagation(); 
-        if (onCustomSortTrigger) onCustomSortTrigger('mega_filter', m.rawType); 
-      };
+      b.onclick = (e) => { e.stopPropagation(); if (onCustomSortTrigger) onCustomSortTrigger('mega_filter', m.rawType); };
       el.appendChild(b);
     });
     return el;
   }
 
   static renderFastTravel(v, row, onCustomSortTrigger) {
-    const el = document.createElement('div');
-    el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
-    if (!v) { 
-      el.innerText = "✖"; 
-      el.style.color = STELLARIS_UI.colors.badgeEmpty; 
-      return el; 
-    }
-    
+    const el = document.createElement('div'); el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
+    if (!v) { el.innerText = "✖"; el.style.color = STELLARIS_UI.colors.badgeEmpty; return el; }
     const nodes = [
-      { cond: v.wormhole === true, id: 'ft_wormhole', ico: "🌀", label: "Wormhole" },
-      { cond: v.gate === true, id: 'ft_gate', ico: "🚪", label: "Gateway" },
-      { cond: v.lgate === true, id: 'ft_lgate', ico: "🔒", label: "L-Gate" },
-      { cond: v.shroud === true, id: 'ft_shroud', ico: "👁️", label: "Shroud Tunnel" }
+      { cond: v.wormhole, id: 'ft_wormhole', ico: "🌀", label: "Wormhole" },
+      { cond: v.gate, id: 'ft_gate', ico: "🚪", label: "Gateway" },
+      { cond: v.lgate, id: 'ft_lgate', ico: "🔒", label: "L-Gate" },
+      { cond: v.shroud, id: 'ft_shroud', ico: "🔮", label: "Shroud Tunnel" }
     ];
-
     let hasAny = false;
     nodes.forEach(n => {
       if (n.cond) {
-        hasAny = true; 
-        const b = document.createElement('span');
-        b.innerText = `${n.ico} ${n.label}`;
+        hasAny = true; const b = document.createElement('span'); b.innerText = `${n.ico} ${n.label.toUpperCase()}`;
         b.style.cssText = STELLARIS_UI.styles.interactiveBadge + `background:${STELLARIS_UI.colors.panelBgLight}; border:1px solid ${STELLARIS_UI.colors.borderAccent}; color:${STELLARIS_UI.colors.borderAccent};`;
-        b.title = `${n.label} Transit Node Portal\n\n[ CLICK TO SORT BY THIS TRANSIT TYPE ]`;
-        
-        b.onclick = (e) => { 
-          e.stopPropagation(); 
-          if (onCustomSortTrigger) onCustomSortTrigger(n.id, n.label); 
-        };
+        b.title = `Transit Node Type: ${n.label}\n\n[ CLICK TO FILTER BY THIS TRANSIT NETWORK ]`;
+        b.onclick = (e) => { e.stopPropagation(); if (onCustomSortTrigger) onCustomSortTrigger(n.id, true); };
         el.appendChild(b);
       }
     });
-
-    if (!hasAny) { 
-      el.innerText = "✖"; 
-      el.style.color = STELLARIS_UI.colors.badgeEmpty; 
-    }
+    if (!hasAny) { el.innerText = "✖"; el.style.color = STELLARIS_UI.colors.badgeEmpty; }
     return el;
   }
 }

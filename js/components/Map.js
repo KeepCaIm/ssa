@@ -12,7 +12,7 @@ export class GalaxyMap {
     
     this.systems = [];
     this.empires = [];
-    this.activeTransitFilter = 'none'; // FIXED: Forward transit selector state down
+    this.activeTransitFilter = 'none';
 
     Object.assign(this.el.style, { 
       width: '100%', height: '100%', cursor: 'grab', display: 'block' 
@@ -22,7 +22,16 @@ export class GalaxyMap {
     this.startX = 0; this.startY = 0;
     this.totalMoveDist = 0; 
     
+    // FIXED: Named reference bound to retain tracking capabilities across screens
+    this.resizeBoundHandler = () => { this.camera.resize(); this.render(); };
+    window.addEventListener('resize', this.resizeBoundHandler);
+    
     this.initEvents();
+  }
+
+  // FIXED: Explicitly unbind memory leak nodes when dropping screen views
+  unloadEvents() {
+    window.removeEventListener('resize', this.resizeBoundHandler);
   }
 
   setViewport(systems, checkedIdsSet = new Set(), empiresList = [], cachedState = null, checkedEmpireIdsSet = new Set()) {
@@ -51,13 +60,16 @@ export class GalaxyMap {
   }
 
   initEvents() {
-    window.addEventListener('resize', () => { this.camera.resize(); this.render(); });
     this.el.addEventListener('mousedown', (e) => {
       this.isDragging = true; this.el.style.cursor = 'grabbing';
       this.startX = e.clientX - this.camera.panX; this.startY = e.clientY - this.camera.panY;
       this.totalMoveDist = 0; 
     });
-    window.addEventListener('mouseup', () => { this.isDragging = false; this.el.style.cursor = 'grab'; });
+    
+    // Fixed pointer track state boundaries matching standard frame movements
+    this.mouseUpGlobalHandler = () => { this.isDragging = false; this.el.style.cursor = 'grab'; };
+    window.addEventListener('mouseup', this.mouseUpGlobalHandler);
+    
     this.el.addEventListener('mousemove', (e) => {
       const rect = this.el.getBoundingClientRect();
       if (this.isDragging) {
@@ -83,17 +95,19 @@ export class GalaxyMap {
       if (detectedNode) this.onSystemClick(detectedNode);
     });
   }
+  
+  destroy() {
+    this.unloadEvents();
+    window.removeEventListener('mouseup', this.mouseUpGlobalHandler);
+  }
 
   render() {
     this.renderer.clear();
     this.renderer.drawGrid();
     
-    // FIXED: Forwarded filter query down to specialized renderer engines
     this.renderer.activeTransitFilter = this.activeTransitFilter;
-    
     this.renderer.drawHyperlanes(this.systems);
     
-    // FIXED: Wormholes dynamic link connector engine execution step
     if (this.activeTransitFilter === 'wormhole') {
       this.renderer.drawWormholeLinks(this.systems);
     }

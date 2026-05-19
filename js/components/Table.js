@@ -6,9 +6,10 @@ import { STELLARIS_UI } from '../core/Theme.js';
  * sticky headers, and pixel-perfect smooth vertical offset targeting.
  */
 export class SciFiTable {
-  constructor(columns, onCheckChange = null) {
+  constructor(columns, onCheckChange = null, onBatchCheckChange = null) {
     this.columns = columns;
     this.onCheckChange = onCheckChange;
+    this.onBatchCheckChange = onBatchCheckChange; // Added batch handler capability
     this.sortColumnId = null;
     this.sortAscending = true;
     this.onSortCallback = null;
@@ -130,7 +131,6 @@ export class SciFiTable {
       tr.style.transition = 'background 0.1s';
       tr.setAttribute('data-row-id', String(rowData.id));
 
-      // FIXED: Swapped hardcoded colors out for semantic variables tokens
       tr.addEventListener('mouseenter', () => { tr.style.backgroundColor = colors.rowHoverBg; });
       tr.addEventListener('mouseleave', () => { tr.style.backgroundColor = 'transparent'; });
 
@@ -172,12 +172,20 @@ export class SciFiTable {
   }
 
   toggleAllRows(isChecked) {
+    const batchedIds = [];
+    
+    // Perform rapid visual update to input nodes without firing expensive DOM events
     this.rowsCache.forEach(row => {
       if (row.input.checked !== isChecked) {
         row.input.checked = isChecked;
-        row.input.dispatchEvent(new Event('change'));
+        batchedIds.push(row.id);
       }
     });
+
+    // Fire a single localized atomic array change upward to the parent view
+    if (this.onBatchCheckChange && batchedIds.length > 0) {
+      this.onBatchCheckChange(batchedIds, isChecked);
+    }
   }
 
   scrollToRowId(id) {
@@ -185,7 +193,6 @@ export class SciFiTable {
     const targetElement = this.tbody.querySelector(`[data-row-id="${id}"]`);
     if (targetElement !== null) {
       targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // FIXED: Uses centralization constants
       targetElement.style.backgroundColor = colors.rowHighlightBg;
       setTimeout(() => { targetElement.style.backgroundColor = 'transparent'; }, 800);
     }

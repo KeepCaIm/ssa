@@ -10,18 +10,23 @@ export class StorageManager {
     this.onDataLoaded = onDataLoaded;     
   }
 
-  async handleFileSelection(filesList) {
+  async handleFileSelection(filesList, inputElement = null) {
     if (!filesList || filesList.length === 0) return;
     
+    // CORRECTED: Secure extraction of the primary file object out of the FileList container
     const targetFile = filesList[0]; 
     if (targetFile === undefined || targetFile === null) return;
     
     await this.loadSavePipeline(targetFile);
+    
+    // Clear the active DOM node tracking value cache to prevent browser heap pressure issues
+    if (inputElement) {
+      inputElement.value = "";
+    }
   }
 
   async loadSavePipeline(file) {
     try {
-      // FIXED: Actualized terminal user text from binary jargon to readable save actions
       this.onStatusUpdate("READING AND UNPACKING CLAUDEWITZ DATA STRUCTURES...");
       
       const parsedData = await StellarisSaveParser.parseFile(file);

@@ -1,173 +1,117 @@
 import { ParadoxNameResolver } from './NameResolver.js';
 import { SystemDataHelpers } from './SystemDataHelpers.js';
 
-/**
- * ProcessorSystems
- * Assembles system data topologies by tracking Clausewitz object links, 
- * rotating coordinate values 180°, binding star types from the 0-th index of arrays,
- * and aggregating decentralized planet yields into granular totals.
- */
 export class ProcessorSystems {
   static run(rootJson) {
-    const systems = [];
-    const galacticObjectNode = rootJson.galactic_object;
-    if (!galacticObjectNode || typeof galacticObjectNode !== 'object') return systems;
-
+    const systems = []; const objectNode = rootJson.galactic_object;
+    if (!objectNode || typeof objectNode !== 'object') return systems;
     const planetsBlock = rootJson.planets?.planet || null;
-    const depositDb = rootJson.deposit || null;
-    const sbMap = {};
-    const shipMap = {};
-    const fleetMap = {};
+    const sbMap = {}; const shipMap = {}; const fleetMap = {};
 
-    const hasStarbases = rootJson.starbase_mgr?.starbases !== undefined && rootJson.starbase_mgr?.starbases !== null;
-    if (hasStarbases) {
+    // FIXED: Correctly grab master deposit dictionary references matching the top level payload
+    const masterDepositDb = rootJson.deposit || rootJson.deposits || null;
+    const cleanDepositDb = masterDepositDb?.deposit ? masterDepositDb.deposit : masterDepositDb;
+
+    if (rootJson.starbase_mgr?.starbases) {
       Object.keys(rootJson.starbase_mgr.starbases).forEach(id => {
         const st = rootJson.starbase_mgr.starbases[id].station;
-        if (st !== undefined) {
-          sbMap[String(id).trim()] = String(typeof st === 'object' ? st.key || st.value : st).trim();
-        }
+        if (st) sbMap[String(id).trim()] = String(typeof st === 'object' ? st.key || st.value : st).trim();
       });
     }
-    
-    if (rootJson.fleet !== undefined && rootJson.fleet !== null) {
+    if (rootJson.fleet) {
       Object.keys(rootJson.fleet).forEach(id => {
-        const targetSrc = rootJson.fleet[id].ships?._list || rootJson.fleet[id].ships;
-        const arr = Array.isArray(targetSrc) ? targetSrc : [targetSrc];
-        arr.forEach(sId => { 
-          if (sId !== undefined && sId !== null) {
-            shipMap[String(typeof sId === 'object' ? sId.key || sId.value : sId).trim()] = String(id).trim(); 
-          }
+        const src = rootJson.fleet[id].ships?._list || rootJson.fleet[id].ships;
+        (Array.isArray(src) ? src : [src]).forEach(sId => {
+          if (sId) shipMap[String(typeof sId === 'object' ? sId.key || sId.value : sId).trim()] = String(id).trim();
         });
       });
     }
-    
-    if (rootJson.country !== undefined && rootJson.country !== null) {
+    if (rootJson.country) {
       Object.keys(rootJson.country).forEach(id => {
-        const targetSrc = rootJson.country[id].fleets_manager?.owned_fleets?._list || rootJson.country[id].fleets_manager?.owned_fleets;
-        const arr = Array.isArray(targetSrc) ? targetSrc : [targetSrc];
-        arr.forEach(f => { 
-          if (f?.fleet !== undefined) {
-            fleetMap[String(typeof f.fleet === 'object' ? f.fleet.key || f.fleet.value : f.fleet).trim()] = String(id).trim(); 
-          }
+        const src = rootJson.country[id].fleets_manager?.owned_fleets?._list || rootJson.country[id].fleets_manager?.owned_fleets;
+        (Array.isArray(src) ? src : [src]).forEach(f => {
+          if (f?.fleet) fleetMap[String(typeof f.fleet === 'object' ? f.fleet.key || f.fleet.value : f.fleet).trim()] = String(id).trim();
         });
       });
     }
 
-    Object.keys(galacticObjectNode).forEach(id => {
-      const s = galacticObjectNode[id];
-      if (!s || typeof s !== 'object') return;
-
-      let ownerId = "none";
-      let sbLevel = "none";
-      let pSbId = "";
-      
-      if (s.starbases !== undefined && s.starbases !== null) {
-        pSbId = String(s.starbases._list ? s.starbases._list : (Array.isArray(s.starbases) ? s.starbases : (s.starbases.key || s.starbases.value || s))).trim();
-        if (pSbId !== "" && pSbId !== "4294967295") {
-          const matchedShip = sbMap[pSbId];
-          const matchedFleet = shipMap[matchedShip];
-          if (fleetMap[matchedFleet] !== undefined) {
-            ownerId = fleetMap[matchedFleet];
-          }
-          
-          const hasStarbaseRecord = rootJson.starbase_mgr?.starbases[pSbId] !== undefined;
-          if (hasStarbaseRecord) {
-            let rawLvl = String(rootJson.starbase_mgr.starbases[pSbId].level || "outpost").toLowerCase();
-            sbLevel = ParadoxNameResolver.cleanString(rawLvl.replace("starbase_level_", "").replace("starbase level ", ""));
-          }
+    Object.keys(objectNode).forEach(id => {
+      const s = objectNode[id]; if (!s || typeof s !== 'object') return;
+      let ownerId = "none"; let sbLevel = "none";
+      if (s.starbases) {
+        const pSbId = String(s.starbases._list ? s.starbases._list : (Array.isArray(s.starbases) ? s.starbases : (s.starbases.key || s.starbases.value || s))).trim();
+        if (pSbId && pSbId !== "4294967295") {
+          if (fleetMap[shipMap[sbMap[pSbId]]]) ownerId = fleetMap[shipMap[sbMap[pSbId]]];
+          const rec = rootJson.starbase_mgr?.starbases?.[pSbId];
+          if (rec && typeof rec === 'object') sbLevel = ParadoxNameResolver.cleanString(String(rec.level || "outpost").toLowerCase().replace("starbase_level_", "").replace("starbase level ", ""));
         }
       }
 
       const links = [];
-      const lanes = Array.isArray(s.hyperlane) ? s.hyperlane : (s.hyperlane?._list || [s.hyperlane]);
-      lanes.forEach(l => { 
-        if (l?.to !== undefined) {
-          links.push(String(typeof l.to === 'object' ? l.to.key || l.to.value : l.to).trim()); 
-        }
+      (Array.isArray(s.hyperlane) ? s.hyperlane : (s.hyperlane?._list || [s.hyperlane])).forEach(l => {
+        if (l?.to) links.push(String(typeof l.to === 'object' ? l.to.key || l.to.value : l.to).trim());
       });
 
       const pOut = { planetCount: 0, hasMolten: false, arcEligibleCount: 0, celestialList: [], resBreakdown: { e:0, m:0, a:0, p:0, s:0, g:0, n:0 } };
       SystemDataHelpers.parsePlanets(s, rootJson, planetsBlock, pOut);
 
-      let starType = ParadoxNameResolver.cleanString(String(s.star_class || "unknown"));
+      const rClass = String(s.star_class || "unknown").toLowerCase();
+      let starType = ParadoxNameResolver.cleanString(rClass);
       let starName = ParadoxNameResolver.resolve(s.name || "Primary Star");
-      const starBreakdown = { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
-      let totalStarResSum = 0;
-      
-      let pIdsList = Array.isArray(s.planet) ? s.planet : (s.planet?._list || (s.planet ? [s.planet] : []));
-      const hasPlanets = pIdsList.length !== 0 && pIdsList.length > 0;
-      
-      if (hasPlanets && planetsBlock !== null) {
-        const firstNode = pIdsList[0];
-        const primaryStarPlanetId = String(typeof firstNode === 'object' ? firstNode.key || firstNode.value : firstNode).trim();
-        const starObj = planetsBlock[primaryStarPlanetId];
-        
-        if (starObj !== undefined && starObj !== null) {
-          starType = ParadoxNameResolver.cleanString(String(starObj.planet_class || starType));
-          starName = ParadoxNameResolver.resolve(starObj.name || starName);
-          
-          if (starObj.deposits !== undefined && starObj.deposits !== null) {
-            let sDepIds = Array.isArray(starObj.deposits) ? starObj.deposits : (starObj.deposits._list || [starObj.deposits]);
-            sDepIds.forEach(sdId => {
-              const cleanSdId = String(typeof sdId === 'object' ? sdId.key || sdId.value : sdId).trim();
-              const dObj = depositDb ? depositDb[cleanSdId] : null;
-              if (dObj && dObj.type) {
-                const res = SystemDataHelpers.extractValueFromDepositType(String(dObj.type));
-                starBreakdown[res.cat] += res.val;
-                totalStarResSum += res.val;
-              }
-            });
+      const starBreakdown = { e:0, m:0, a:0, p:0, s:0, g:0, n:0 }; let starResSum = 0;
+      let pList = Array.isArray(s.planet) ? s.planet : (s.planet?._list || (s.planet ? [s.planet] : []));
+      const starIds = [];
+
+      if (pList.length > 0 && planetsBlock) {
+        let maxStars = rClass.includes("binary") ? 2 : (rClass.includes("trinary") ? 3 : 1);
+        const types = []; const names = []; const limit = Math.min(maxStars, pList.length);
+        for (let i = 0; i < limit; i++) {
+          const sPlanetId = String(typeof pList[i] === 'object' ? pList[i].key || pList[i].value : pList[i]).trim();
+          const starObj = planetsBlock[sPlanetId];
+          if (starObj) {
+            starIds.push(sPlanetId);
+            types.push(ParadoxNameResolver.cleanString(String(starObj.planet_class || "unknown")));
+            names.push(ParadoxNameResolver.resolve(starObj.name || "Star"));
+            
+            // FIXED: Scan using corrected master cleanDepositDb references mapped to star entities
+            if (cleanDepositDb && typeof cleanDepositDb === 'object') {
+              Object.keys(cleanDepositDb).forEach(depId => {
+                const dObj = cleanDepositDb[depId];
+                if (dObj && dObj.deposit_holder && dObj.type) {
+                  const holderType = String(dObj.deposit_holder.type).trim();
+                  if ((holderType === "0" || holderType === "pc" || holderType === "planet") && String(dObj.deposit_holder.id).trim() === sPlanetId) {
+                    const res = SystemDataHelpers.extractValueFromDepositType(String(dObj.type));
+                    starBreakdown[res.cat] += res.val;
+                    starResSum += res.val;
+                  }
+                }
+              });
+            }
           }
         }
+        if (types.length > 0) { starType = types.join(" / "); starName = names.join(" / "); }
       }
 
-      if (totalStarResSum === 0) {
-        const isBlackHole = starType.includes("black hole") || starType.includes("black_hole") || starType.includes("blackhole");
+      if (starResSum === 0) {
+        const isBlackHole = rClass.includes("black hole") || rClass.includes("black_hole") || rClass.includes("blackhole");
         if (isBlackHole === true) { 
-          starBreakdown.p = 10; 
-          totalStarResSum = 10; 
+          starBreakdown.p = 10; starResSum = 10; 
         } else { 
-          starBreakdown.e = 4; 
-          totalStarResSum = 4; 
+          starBreakdown.e = 4; starResSum = 4; 
         }
       }
 
-      // FIXED: System resources are now driven entirely by pOut.resBreakdown.
-      // Since parsePlanets processes ALL bodies in the system (including the star at index 0), 
-      // adding starBreakdown a second time caused duplicate values.
-      const systemResources = {
-        e: pOut.resBreakdown.e, 
-        m: pOut.resBreakdown.m, 
-        a: pOut.resBreakdown.a,
-        p: pOut.resBreakdown.p, 
-        s: pOut.resBreakdown.s,
-        g: pOut.resBreakdown.g, 
-        n: pOut.resBreakdown.n
-      };
-
-      const megastructures = [];
-      SystemDataHelpers.parseMegastructures(s, rootJson, megastructures);
-
-      const fastTravel = { wormhole: false, gate: false, lgate: false, shroud: false, wormholeGlobalIndex: null, wormholeTargetIndex: null };
-      SystemDataHelpers.parseBypasses(s, rootJson, fastTravel, String(id).trim());
+      const sysRes = { ...pOut.resBreakdown };
+      const megas = []; SystemDataHelpers.parseMegastructures(s, rootJson, megas);
+      const ft = { wormhole: false, gate: false, lgate: false, shroud: false, wormholeGlobalIndex: null, wormholeTargetIndex: null };
+      SystemDataHelpers.parseBypasses(s, rootJson, ft, String(id).trim());
 
       systems.push({
-        id: String(id).trim(), 
-        name: ParadoxNameResolver.resolve(s.name || `System ${id}`),
-        owner: ownerId, 
-        bodies: pOut.planetCount,
-        mapX: -(parseFloat(s.coordinate?.x) || 0) * 2.8, 
-        mapY: (parseFloat(s.coordinate?.y) || 0) * 2.8,
-        linksArray: links, 
-        starbaseLevel: sbLevel,
-        star: { id: id, type: starType, name: starName, resourcesBreakdown: starBreakdown, totalStarRes: totalStarResSum },
-        totalResources: systemResources.e + systemResources.m + systemResources.a + systemResources.p + systemResources.s + systemResources.g + systemResources.n, 
-        resourcesPayload: systemResources, 
-        celestialList: pOut.celestialList,
-        hasMoltenWorld: pOut.hasMolten, 
-        arcEligibleCount: pOut.arcEligibleCount, 
-        megastructures: megastructures, 
-        fastTravel: fastTravel
+        id: String(id).trim(), name: ParadoxNameResolver.resolve(s.name || `System ${id}`), owner: ownerId, bodies: pOut.planetCount,
+        mapX: -(parseFloat(s.coordinate?.x) || 0) * 2.8, mapY: (parseFloat(s.coordinate?.y) || 0) * 2.8, linksArray: links, starbaseLevel: sbLevel,
+        star: { id: id, starIds, type: starType, name: starName, resourcesBreakdown: starBreakdown, totalStarRes: starResSum },
+        totalResources: sysRes.e + sysRes.m + sysRes.a + sysRes.p + sysRes.s + sysRes.g + sysRes.n, resourcesPayload: sysRes,
+        celestialList: pOut.celestialList, hasMoltenWorld: pOut.hasMolten, arcEligibleCount: pOut.arcEligibleCount, megastructures: megas, fastTravel: ft
       });
     });
     return systems;

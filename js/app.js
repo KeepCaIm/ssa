@@ -5,7 +5,7 @@ import { StorageManager } from './core/StorageManager.js';
 import { ScreenEmpires } from './screens/ScreenEmpires.js';
 import { ScreenSystems } from './screens/ScreenSystems.js';
 import { ScreenMap } from './screens/ScreenMap.js';
-import { ScreenFAQ } from './screens/ScreenFAQ.js'; // FIXED: Enrolled new user manual view module
+import { ScreenFAQ } from './screens/ScreenFAQ.js';
 
 class StellarisSPA {
   constructor() {
@@ -23,6 +23,7 @@ class StellarisSPA {
 
     this.allEmpiresCheckedCache = false;
     this.allSystemsCheckedCache = false;
+    this.activeScreenInstance = null; 
 
     this.storage = new StorageManager(
       (msg, isError) => this.updateStatusUi(msg, isError),
@@ -55,7 +56,8 @@ class StellarisSPA {
     this.hiddenFileInput.accept = '.sav'; 
     this.hiddenFileInput.style.display = 'none';
     this.hiddenFileInput.addEventListener('change', async (e) => { 
-      await this.storage.handleFileSelection(e.target.files); 
+      // Safely forward both the FileList object and the DOM node reference to handle cleanups
+      await this.storage.handleFileSelection(e.target.files, e.target); 
     });
 
     this.root.appendChild(this.hiddenFileInput); 
@@ -78,7 +80,6 @@ class StellarisSPA {
 
   renderTabs() {
     this.navBar.innerHTML = '';
-    // FIXED: Appended the manual FAQ tab item down into the main navigation matrix array
     const tabs = [
       { id: 1, label: 'Empires Directory' }, 
       { id: 2, label: 'System Locator' }, 
@@ -112,20 +113,27 @@ class StellarisSPA {
   switchScreen(screenId) {
     this.currentScreen = screenId; 
     this.renderTabs(); 
-    this.contentViewport.innerHTML = '';
     
+    if (this.activeScreenInstance && typeof this.activeScreenInstance.destroy === 'function') {
+      this.activeScreenInstance.destroy();
+    }
+
+    this.contentViewport.innerHTML = '';
     this.contentViewport.style.height = '100%';
     this.contentViewport.style.width = '100%';
 
     if (screenId === 1) {
-      const screenOne = new ScreenEmpires(
+      this.activeScreenInstance = new ScreenEmpires(
         this.contentViewport, this.saveData, this.selectedEmpireIds, () => {},
         this.sortEmpiresId, this.sortEmpiresAsc, (id, asc) => { this.sortEmpiresId = id; this.sortEmpiresAsc = asc; }
       );
-      screenOne.render();
+      this.activeScreenInstance.render();
       
-      if (screenOne.tableInstance !== null) {
-        const masterInput = screenOne.tableInstance.el.querySelector('thead input[type="checkbox"]');
+      if (this.activeScreenInstance.tableInstance !== null) {
+        this.activeScreenInstance.tableInstance.onBatchCheckChange = (ids, checked) => {
+          ids.forEach(id => checked ? this.selectedEmpireIds.add(id) : this.selectedEmpireIds.delete(id));
+        };
+        const masterInput = this.activeScreenInstance.tableInstance.el.querySelector('thead input[type="checkbox"]');
         if (masterInput !== null) {
           masterInput.checked = this.allEmpiresCheckedCache;
         }
@@ -133,40 +141,44 @@ class StellarisSPA {
       }
     }
     if (screenId === 2) {
-      const screenTwoInstance = new ScreenSystems(
+      this.activeScreenInstance = new ScreenSystems(
         this.contentViewport, this.saveData, this.selectedEmpireIds, this.selectedSystemIds, () => {},
         this.sortSystemsId, this.sortSystemsAsc, (id, asc) => { this.sortSystemsId = id; this.sortSystemsAsc = asc; }
       );
-      screenTwoInstance.render();
+      this.activeScreenInstance.render();
       
-      if (screenTwoInstance.tableInstance !== null) {
-        const masterInput = screenTwoInstance.tableInstance.el.querySelector('thead input[type="checkbox"]');
+      if (this.activeScreenInstance.tableInstance !== null) {
+        this.activeScreenInstance.tableInstance.onBatchCheckChange = (ids, checked) => {
+          ids.forEach(id => checked ? this.selectedSystemIds.add(id) : this.selectedSystemIds.delete(id));
+        };
+        const masterInput = this.activeScreenInstance.tableInstance.el.querySelector('thead input[type="checkbox"]');
         if (masterInput !== null) {
           masterInput.checked = this.allSystemsCheckedCache;
         }
         masterInput.addEventListener('change', (e) => { this.allSystemsCheckedCache = e.target.checked; });
       }
 
-      if (this.targetScrollSystemId !== null && screenTwoInstance.tableInstance) {
+      if (this.targetScrollSystemId !== null && this.activeScreenInstance.tableInstance) {
         setTimeout(() => { 
-          screenTwoInstance.tableInstance.scrollToRowId(this.targetScrollSystemId); 
+          this.activeScreenInstance.tableInstance.scrollToRowId(this.targetScrollSystemId); 
           this.targetScrollSystemId = null; 
         }, 60);
       }
     }
     if (screenId === 3) {
-      new ScreenMap(
+      this.activeScreenInstance = new ScreenMap(
         this.contentViewport, this.saveData, this.selectedSystemIds, this.selectedEmpireIds, this.mapCameraStateCache, 
         (clickedSys) => {
           this.targetScrollSystemId = String(clickedSys.id); 
           this.switchScreen(2); 
         }, 
         (savedState) => { this.mapCameraStateCache = savedState; }
-      ).render();
+      );
+      this.activeScreenInstance.render();
     }
-    // FIXED: Wired routing path trigger to instantiate the documentation interface view
     if (screenId === 4) {
-      new ScreenFAQ(this.contentViewport).render();
+      this.activeScreenInstance = new ScreenFAQ(this.contentViewport);
+      this.activeScreenInstance.render();
     }
   }
 }

@@ -10,17 +10,16 @@ export class ScreenMap {
     this.initialCameraState = initialCameraState; 
     this.onSystemNodeMapClick = onSystemNodeMapClick;
     this.onCameraStateMutation = onCameraStateMutation; 
-    this.activeTransitFilter = 'none'; // 'none', 'wormhole', 'gate', 'lgate', 'shroud'
+    this.activeTransitFilter = 'none'; 
+    this.mapInstance = null;
   }
 
   render() {
     this.viewport.innerHTML = '';
 
-    // Main layout container holding both the top control bar and the canvas map viewport
     const container = document.createElement('div');
     container.style.cssText = STELLARIS_UI.styles.fullFrame + 'display:flex; flex-direction:column; position:relative;';
 
-    // Top control panel for the Radio Group selection matrix
     const controlPanel = document.createElement('div');
     controlPanel.style.cssText = `padding:10px; background:${STELLARIS_UI.colors.panelBgLight}; border-bottom:1px solid ${STELLARIS_UI.colors.border}; display:flex; gap:15px; align-items:center; z-index:5; font-family:${STELLARIS_UI.font}; font-size:11px; font-weight:bold; color:${STELLARIS_UI.colors.textHeader}; letter-spacing:1px;`;
     
@@ -47,9 +46,10 @@ export class ScreenMap {
 
       radio.addEventListener('change', (e) => {
         this.activeTransitFilter = e.target.value;
-        // Re-compile viewport graphics nodes maps dynamically on state change
-        map.activeTransitFilter = this.activeTransitFilter;
-        map.render();
+        if (this.mapInstance) {
+          this.mapInstance.activeTransitFilter = this.activeTransitFilter;
+          this.mapInstance.render();
+        }
       });
 
       label.appendChild(radio);
@@ -63,24 +63,35 @@ export class ScreenMap {
     canvasWrapper.style.cssText = 'flex:1; width:100%; height:100%; position:relative; overflow:hidden;';
     container.appendChild(canvasWrapper);
 
-    const map = new GalaxyMap((clickedSys) => {
+    this.mapInstance = new GalaxyMap((clickedSys) => {
       this.onSystemNodeMapClick(clickedSys); 
     }, (updatedState) => {
       this.onCameraStateMutation(updatedState);
     });
 
-    map.activeTransitFilter = this.activeTransitFilter; // Inject initial filter state reference
-    canvasWrapper.appendChild(map.el);
+    this.mapInstance.activeTransitFilter = this.activeTransitFilter; 
+    canvasWrapper.appendChild(this.mapInstance.el);
     this.viewport.appendChild(container);
     
-    const completeSystemsList = this.saveData.systems || [];
+    // FIXED: Shift execution to requestAnimationFrame so canvas dimensions evaluate correctly after DOM mount
+    requestAnimationFrame(() => {
+      if (!this.mapInstance) return;
+      this.mapInstance.camera.resize();
+      this.mapInstance.setViewport(
+        this.saveData.systems || [], 
+        this.activeSystemIdsSet, 
+        this.saveData.empires || [],
+        this.initialCameraState,
+        this.activeEmpireIdsSet 
+      );
+    });
+  }
 
-    map.setViewport(
-      completeSystemsList, 
-      this.activeSystemIdsSet, 
-      this.saveData.empires || [],
-      this.initialCameraState,
-      this.activeEmpireIdsSet 
-    );
+  // FIXED: Dismount hook routed straight from app.js router loops
+  destroy() {
+    if (this.mapInstance) {
+      this.mapInstance.destroy();
+      this.mapInstance = null;
+    }
   }
 }

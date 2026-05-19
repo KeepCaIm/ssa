@@ -17,7 +17,6 @@ export class StellarisSaveParser {
       const empires = ProcessorEmpires.run(parsedJson.country);
       const systems = ProcessorSystems.run(parsedJson); 
       
-      // FIXED: Completely stripped the remaining [ORCHESTRATOR] AST Pipeline success console.log statement
       return { empires, systems };
     } catch (err) {
       throw new Error(`Orchestration failure: ${err.message}`);
@@ -33,23 +32,19 @@ export class StellarisSaveParser {
     let lastKey = null; 
     let expectingValue = false;
 
-    while (true) {
-      match = tokenRegex.exec(text);
-      if (match === null) {
-        break;
-      }
-      
+    while ((match = tokenRegex.exec(text)) !== null) {
       const token = match[1] || match[2] || match[3];
+      
       if (token === "=") { 
         expectingValue = true; 
         continue; 
       }
+      
       if (token === "{") {
         const nextObj = {};
         if (lastKey !== null) {
           if (current[lastKey] !== undefined) {
-            const isAlreadyArr = Array.isArray(current[lastKey]);
-            if (isAlreadyArr === false) {
+            if (!Array.isArray(current[lastKey])) {
               current[lastKey] = [current[lastKey]];
             }
             current[lastKey].push(nextObj);
@@ -68,20 +63,19 @@ export class StellarisSaveParser {
         expectingValue = false; 
         continue;
       }
+      
       if (token === "}") {
         stack.pop(); 
-        const stackLen = stack.length;
-        const fallbackIndex = stackLen - 1;
-        current = stack[fallbackIndex] || root; 
+        current = stack[stack.length - 1] || root; 
         lastKey = null; 
         expectingValue = false; 
         continue;
       }
+      
       if (expectingValue === true) {
         if (lastKey !== null) {
           if (current[lastKey] !== undefined) {
-            const isAlreadyArr = Array.isArray(current[lastKey]);
-            if (isAlreadyArr === false) {
+            if (!Array.isArray(current[lastKey])) {
               current[lastKey] = [current[lastKey]];
             }
             current[lastKey].push(token);
@@ -93,7 +87,15 @@ export class StellarisSaveParser {
         expectingValue = false;
       } else {
         lastKey = token;
-        if (lastKey !== null && text.charAt(tokenRegex.lastIndex) !== '=') {
+        
+        // Save the scanner's current matching tracker position index
+        const savedIndex = tokenRegex.lastIndex;
+        const nextMatch = tokenRegex.exec(text);
+        // Safely reset lookup pointer boundary right back to prevent string slice degradation
+        tokenRegex.lastIndex = savedIndex; 
+        
+        const nextToken = nextMatch ? (nextMatch[1] || nextMatch[2] || nextMatch[3]) : null;
+        if (nextToken !== '=') {
           if (current._list === undefined) {
             current._list = [];
           }

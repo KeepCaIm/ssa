@@ -1,176 +1,120 @@
 import { ParadoxNameResolver } from './NameResolver.js';
 import { ArcFurnaceEvaluator } from './ArcFurnaceEvaluator.js';
+import { SYSTEM_STATIC_REGISTRY } from './SystemConstants.js';
 
-/**
- * SystemDataHelpers
- * Service utility suite extracting mineral breakdowns from deposit structures,
- * tracking nested megastructures across fallback containers, and isolating
- * index-bound spatial bypass paths directly from Clausewitz objects.
- */
 export class SystemDataHelpers {
   static extractValueFromDepositType(typeStr) {
-    if (!typeStr) return { val: 0, cat: "m" };
-    const low = typeStr.toLowerCase();
-    
-    // FIXED: Totally ignore any deposit blocks containing the "arc_furnace" substring.
-    // This removes pre-built event anchors, phantom AI layout spikes, and active megastructure 
-    // multipliers, ensuring you see strictly the natural, un-modded base tile yields.
-    if (low.includes("arc_furnace")) {
-      return { val: 0, cat: "m" };
-    }
-    
+    if (!typeStr) return { val: 0, cat: "unknown" };
+    const low = typeStr.replace(/"/g, '').trim().toLowerCase();
+    if (low.includes("arc_furnace")) return { val: 0, cat: "unknown" };
     if (low.includes("nanite_harvester") || low.includes("nanites")) return { val: 6, cat: "n" };
     if (low.includes("rich_mountain")) return { val: 4, cat: "m" };
+    if (low.includes("ore_rich_caverns")) return { val: 2, cat: "m" };
 
-    let cat = "m"; 
-    if (low.includes("energy")) {
-      cat = "e";
-    } else if (low.includes("minerals") || low.includes("mineral")) {
-      cat = "m";
-    } else if (low.includes("alloys") || low.includes("alloy")) {
-      cat = "a";
-    } else if (low.includes("physics")) {
-      cat = "p";
-    } else if (low.includes("society")) {
-      cat = "s";
-    } else if (low.includes("engineering")) {
-      cat = "g";
-    } else if (low.includes("research")) {
-      cat = "p"; 
-    } else if (low.includes("dark_matter") || low.includes("living_metal") || low.includes("volatile_motes") || low.includes("rare_crystals") || low.includes("exotic_gases")) {
-      cat = "n"; 
-    }
-
-    let val = 2; 
-    const match = low.match(/_(\d+)$/);
+    let cat = "unknown"; let baseVal = 0;
+    const matchCat = SYSTEM_STATIC_REGISTRY.depositCategories.find(c => low.includes(c.key));
     
-    if (match !== null && match !== undefined) {
-      val = parseInt(match[1], 10) || 2;
-    } else {
-      if (cat === "p" || cat === "s" || cat === "g") {
-        val = 3; 
-      } else if (cat === "e" || cat === "m") {
-        val = 2; 
-      }
+    if (matchCat) {
+      cat = matchCat.cat; baseVal = matchCat.defVal;
+    } else if (SYSTEM_STATIC_REGISTRY.specials.some(s => low.includes(s))) {
+      cat = "n"; baseVal = 2;
     }
 
+    if (cat === "unknown") return { val: 0, cat: "unknown" };
+    const match = low.match(/_(\d+)$/);
+    const val = match ? (parseInt(match[1], 10) || 0) : baseVal;
     return { val, cat };
   }
 
   static parsePlanets(s, rootJson, planetsBlock, out) {
     let pIds = Array.isArray(s.planet) ? s.planet : (s.planet?._list || (s.planet ? [s.planet] : []));
-    const depositDb = rootJson.deposit || null;
+    let depDb = rootJson.deposit || rootJson.deposits || null;
+    if (depDb && depDb.deposit) depDb = depDb.deposit;
     
     out.arcEligibleCount = 0;
+    const yieldsMap = {};
+    
+    if (depDb && typeof depDb === 'object') {
+      const keys = Array.isArray(depDb) ? depDb : (depDb._list ? depDb._list : Object.keys(depDb));
+      keys.forEach(k => {
+        const dObj = (typeof k === 'object') ? k : depDb[k];
+        if (dObj?.deposit_holder?.type !== undefined && dObj.type) {
+          const hType = String(dObj.deposit_holder.type).trim();
+          if (hType === "0" || hType === "pc" || hType === "planet") {
+            const hId = String(dObj.deposit_holder.id).trim();
+            if (!yieldsMap[hId]) yieldsMap[hId] = [];
+            yieldsMap[hId].push({ type: String(dObj.type) });
+          }
+        }
+      });
+    }
 
     pIds.forEach((pId, index) => {
       const cleanId = String(typeof pId === 'object' ? pId.key || pId.value : pId).trim();
       if (!cleanId || cleanId === "undefined") return;
       out.planetCount++;
-      
       const pObj = planetsBlock ? planetsBlock[cleanId] : null;
-      if (pObj !== null && pObj !== undefined) {
-        const pName = ParadoxNameResolver.resolve(pObj.name || "Unknown");
-        const pClass = ParadoxNameResolver.cleanString(String(pObj.planet_class || "unknown"));
-        const lowClass = pClass.toLowerCase();
+      if (!pObj) { out.celestialList.push({ id: cleanId, name: `Body ${cleanId}`, type: "Unscanned" }); return; }
 
-        if (lowClass.includes("molten")) {
-          out.hasMolten = true;
-        }
-        
-        let localBreakdown = { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
-
-        if (pObj.deposits !== undefined && pObj.deposits !== null) {
-          let depIds = Array.isArray(pObj.deposits) ? pObj.deposits : (pObj.deposits._list || [pObj.deposits]);
-          depIds.forEach(dId => {
-            const cleanDId = String(typeof dId === 'object' ? dId.key || dId.value : dId).trim();
-            const depObj = depositDb ? depositDb[cleanDId] : null;
-            if (depObj !== null && depObj.type !== undefined) {
-              const res = SystemDataHelpers.extractValueFromDepositType(String(depObj.type));
-              out.resBreakdown[res.cat] += res.val;
-              localBreakdown[res.cat] += res.val;
-            }
-          });
-        }
-
-        const isEligible = ArcFurnaceEvaluator.isPlanetEligible(pObj, index, lowClass, localBreakdown);
-        if (isEligible === true) {
-          out.arcEligibleCount++;
-        }
-
-        out.celestialList.push({ id: cleanId, name: pName, type: pClass });
-      } else {
-        out.celestialList.push({ id: cleanId, name: `Body ${cleanId}`, type: "Unscanned" });
-      }
-    });
-  }
-
-  static parseMegastructures(s, rootJson, megastructuresFound) {
-    let mIds = Array.isArray(s.megastructures) ? s.megastructures : (s.megastructures?._list || (s.megastructures ? [s.megastructures] : []));
-    let megaDb = rootJson.megastructures || null;
-    
-    if (megaDb !== null && megaDb._list !== undefined && !megaDb['24']) {
-      megaDb = rootJson.megastructures;
-    }
-    if (megaDb === null && Array.isArray(rootJson.megastructures)) {
-      megaDb = rootJson.megastructures.find(m => typeof m === 'object' && !m.coordinate);
-    }
-
-    mIds.forEach(mId => {
-      const cleanId = String(typeof mId === 'object' ? mId.key || mId.value : mId).trim();
-      if (cleanId === "") return;
+      const pName = ParadoxNameResolver.resolve(pObj.name || "Unknown");
+      const pClass = ParadoxNameResolver.cleanString(String(pObj.planet_class || "unknown"));
+      if (pClass.toLowerCase().includes("molten")) out.hasMolten = true;
       
-      let mObj = (megaDb !== null && typeof megaDb === 'object') ? megaDb[cleanId] : null;
-      if (mObj === null && rootJson.megastructure !== undefined) {
-        mObj = rootJson.megastructure[cleanId];
-      }
+      let localBreakdown = { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
+      const activeDeps = yieldsMap[cleanId] || [];
+      const rOwn = pObj.owner !== undefined ? String(pObj.owner).trim() : "none";
+      const isCol = rOwn !== "none" && rOwn !== "" && rOwn !== "4294967295" || pObj.colonize_date || pObj.final_designation || pObj.colony_level || pObj.pop;
 
-      if (mObj !== null && mObj !== undefined && mObj.type !== undefined) {
-        const rawTypeString = String(mObj.type).trim();
-        megastructuresFound.push({
-          id: cleanId, 
-          type: ParadoxNameResolver.cleanString(rawTypeString), 
-          rawType: rawTypeString,
-          owner: mObj.owner !== undefined ? String(mObj.owner).trim() : "none"
-        });
-      } else {
-        megastructuresFound.push({ id: cleanId, type: "Facility Structure", rawType: "unknown", owner: "none" });
-      }
+      activeDeps.forEach(d => {
+        const res = SystemDataHelpers.extractValueFromDepositType(d.type);
+        if (res.cat === "unknown" || res.val <= 0) return;
+        const cType = d.type.replace(/"/g, '').trim().toLowerCase();
+        if (isCol && !cType.includes("d_minerals_") && !cType.includes("d_energy_") && !cType.includes("d_alloys_") && !cType.includes("d_physics_") && !cType.includes("d_engineering_") && !cType.includes("d_society_")) return;
+        out.resBreakdown[res.cat] += res.val; localBreakdown[res.cat] += res.val;
+      });
+
+      if (ArcFurnaceEvaluator.isPlanetEligible(pObj, index, pClass.toLowerCase(), localBreakdown)) out.arcEligibleCount++;
+      out.celestialList.push({ id: cleanId, name: pName, type: pClass });
     });
   }
 
-  static parseBypasses(s, rootJson, fastTravel, systemId) {
-    if (s.natural_wormholes !== undefined) fastTravel.wormhole = true;
-    if (s.flags !== undefined && s.flags !== null) {
+  static parseMegastructures(s, rootJson, found) {
+    let mIds = Array.isArray(s.megastructures) ? s.megastructures : (s.megastructures?._list || (s.megastructures ? [s.megastructures] : []));
+    let db = rootJson.megastructures || rootJson.megastructure || null;
+    mIds.forEach(mId => {
+      const cId = String(typeof mId === 'object' ? mId.key || mId.value : mId).trim();
+      if (!cId) return;
+      let obj = (db && typeof db === 'object') ? db[cId] : null;
+      if (!obj && rootJson.megastructure) obj = rootJson.megastructure[cId];
+      if (obj?.type) {
+        found.push({ id: cId, type: ParadoxNameResolver.cleanString(String(obj.type).trim()), rawType: String(obj.type).trim(), owner: obj.owner !== undefined ? String(obj.owner).trim() : "none" });
+      } else { found.push({ id: cId, type: "Facility Structure", rawType: "unknown", owner: "none" }); }
+    });
+  }
+
+  static parseBypasses(s, rootJson, ft, sysId) {
+    if (s.natural_wormholes !== undefined) ft.wormhole = true;
+    if (s.flags) {
       Object.keys(s.flags).forEach(fk => {
         const low = fk.toLowerCase();
-        if (low.includes("lgate") || low.includes("l_gate")) fastTravel.lgate = true;
-        if (low.includes("shroud")) fastTravel.shroud = true;
-        if (low.includes("gateway")) fastTravel.gate = true;
+        if (low.includes("lgate") || low.includes("l_gate")) ft.lgate = true;
+        if (low.includes("shroud")) ft.shroud = true;
+        if (low.includes("gateway")) ft.gate = true;
       });
     }
-    
     let bIds = Array.isArray(s.bypasses) ? s.bypasses : (s.bypasses?._list || (s.bypasses ? [s.bypasses] : []));
-    
     bIds.forEach(bId => {
-      const cleanId = String(typeof bId === 'object' ? bId.key || bId.value : bId).trim();
-      const bpObj = rootJson.bypasses ? rootJson.bypasses[cleanId] : null;
-      
-      if (bpObj !== null && bpObj !== undefined) {
-        const type = String(bpObj.type || "").toLowerCase();
-        
-        if (type.includes("wormhole")) {
-          fastTravel.wormhole = true;
-          fastTravel.wormholeGlobalIndex = parseInt(cleanId, 10);
-          
-          if (bpObj.linked_to !== undefined && bpObj.linked_to !== null) {
-            const lTo = bpObj.linked_to;
-            fastTravel.wormholeTargetIndex = parseInt(typeof lTo === 'object' ? lTo.key || lTo.value : lTo, 10);
-          }
+      const cId = String(typeof bId === 'object' ? bId.key || bId.value : bId).trim();
+      const bp = rootJson.bypasses ? rootJson.bypasses[cId] : null;
+      if (bp?.type) {
+        const t = String(bp.type).toLowerCase();
+        if (t.includes("wormhole")) {
+          ft.wormhole = true; ft.wormholeGlobalIndex = cId;
+          if (bp.linked_to !== undefined) ft.wormholeTargetIndex = String(typeof bp.linked_to === 'object' ? bp.linked_to.key || bp.linked_to.value : bp.linked_to).trim();
         }
-        if (type.includes("gateway")) fastTravel.gate = true;
-        if (type.includes("lgate") || type.includes("l-gate")) fastTravel.lgate = true;
-        if (type.includes("shroud")) fastTravel.shroud = true;
+        if (t.includes("gateway")) ft.gate = true;
+        if (t.includes("lgate") || t.includes("l-gate")) ft.lgate = true;
+        if (t.includes("shroud")) ft.shroud = true;
       }
     });
   }

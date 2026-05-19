@@ -20,7 +20,13 @@ export class MapRenderer {
   drawGrid() {
     const ctx = this.ctx;
     const colors = STELLARIS_UI.colors;
-    const step = Math.round(this.interval * this.camera.zoom);
+    
+    // FIXED: Skip rendering dense overlapping grids when zooming far out
+    const adaptiveInterval = this.camera.zoom < 0.15 ? this.interval * 5 : this.interval;
+    const step = Math.round(adaptiveInterval * this.camera.zoom);
+    
+    if (step < 8) return; 
+    
     ctx.strokeStyle = colors.grid; 
     ctx.lineWidth = 1; 
     ctx.beginPath();
@@ -28,11 +34,11 @@ export class MapRenderer {
     const startX = Math.round(this.camera.panX % step); 
     const startY = Math.round(this.camera.panY % step);
     
-    for (let x = startX; x === this.canvas.width || x < this.canvas.width; x += step) { 
+    for (let x = startX; x <= this.canvas.width; x += step) { 
       ctx.moveTo(x, 0); 
       ctx.lineTo(x, this.canvas.height); 
     }
-    for (let y = startY; y === this.canvas.height || y < this.canvas.height; y += step) { 
+    for (let y = startY; y <= this.canvas.height; y += step) { 
       ctx.moveTo(0, y); 
       ctx.lineTo(this.canvas.width, y); 
     }
@@ -72,10 +78,8 @@ export class MapRenderer {
     const whSystems = systems.filter(s => s.fastTravel && s.fastTravel.wormholeGlobalIndex !== null && s.fastTravel.wormholeGlobalIndex !== undefined);
     
     ctx.save();
-    // FIXED: Set a distinct high-visibility orange color token matching the UI specification
     ctx.strokeStyle = '#e88024'; 
     ctx.lineWidth = 2;
-    // FIXED: Enforce clear, distinct dashboard style dash line vector channels
     ctx.setLineDash([6, 4]); 
 
     const drawnPairsTrack = new Set();
@@ -86,7 +90,8 @@ export class MapRenderer {
       const targetIndex = s.fastTravel.wormholeTargetIndex;
       if (targetIndex === null || targetIndex === undefined) return;
 
-      const partner = whSystems.find(t => t.fastTravel && t.fastTravel.wormholeGlobalIndex === targetIndex);
+      // FIXED: Safely matches strings instead of integers to preserve large modded maps
+      const partner = whSystems.find(t => t.fastTravel && String(t.fastTravel.wormholeGlobalIndex) === String(targetIndex));
 
       if (partner) {
         const p1 = this.camera.worldToScreen(s.mapX, s.mapY);
@@ -115,22 +120,15 @@ export class MapRenderer {
       const pos = this.camera.worldToScreen(s.mapX, s.mapY);
       const offset = 150;
       
-      const isLeftOfViewport = pos.x < -offset;
-      const isRightOfViewport = pos.x > this.canvas.width + offset;
-      const isAboveViewport = pos.y < -offset;
-      const isBelowViewport = pos.y > this.canvas.height + offset;
-      
-      if (isLeftOfViewport || isRightOfViewport || isAboveViewport || isBelowViewport) return;
+      if (pos.x < -offset || pos.x > this.canvas.width + offset || pos.y < -offset || pos.y > this.canvas.height + offset) return;
 
       const isChecked = checkedIdsSet.has(String(s.id));
       const isVis = !isFilter || this.checkedEmpireIdsSet.has(String(s.owner).trim());
       const hasTargetTransit = isTransitActive && s.fastTravel && s.fastTravel[filterKey] === true;
       const r = 4;
 
-      // FIXED: Refactored system labels to render fully across all tactical overlays
       if (isTransitActive) {
         if (hasTargetTransit) {
-          // Systems containing the requested transit gateway float to high brightness visibility
           ctx.fillStyle = colors.selected; 
           ctx.beginPath(); 
           ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2); 
@@ -143,7 +141,6 @@ export class MapRenderer {
           const tag = emp ? `[${ParadoxNameResolver.getEmpireTag(emp.name)}] ` : "";
           ctx.fillText(`${tag}${s.name}`, pos.x, pos.y - 14);
         } else {
-          // Unmatched systems fade evenly into background nodes rather than disappearing
           ctx.fillStyle = 'rgba(60, 219, 180, 0.20)'; 
           ctx.beginPath(); 
           ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2); 

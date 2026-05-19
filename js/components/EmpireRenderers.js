@@ -45,7 +45,8 @@ export class EmpireRenderers {
     
     b.onclick = (e) => {
       e.stopPropagation();
-      if (onCustomSortTrigger !== null && onCustomSortTrigger !== undefined) {
+      if (onCustomSortTrigger) {
+        // Aligned with the screen's custom filter key tracking signatures
         onCustomSortTrigger('type_filter', v);
       }
     };
@@ -86,7 +87,7 @@ export class EmpireRenderers {
       
       b.onclick = (e) => {
         e.stopPropagation();
-        if (onCustomSortTrigger !== null && onCustomSortTrigger !== undefined) {
+        if (onCustomSortTrigger) {
           onCustomSortTrigger('ethic_filter', eth);
         }
       };
@@ -115,7 +116,7 @@ export class EmpireRenderers {
       
       b.onclick = (e) => {
         e.stopPropagation();
-        if (onCustomSortTrigger !== null && onCustomSortTrigger !== undefined) {
+        if (onCustomSortTrigger) {
           onCustomSortTrigger('civic_filter', civ);
         }
       };
