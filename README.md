@@ -14,6 +14,7 @@ The application enforces a strict separation of concerns, isolating low-level da
 
 ### 📁 Workspace Directory Structure
 
+
 ```text
 ├── 📜 index.html                 # Main application client HTML framework markup
 ├── 📂 build/
@@ -28,10 +29,11 @@ The application enforces a strict separation of concerns, isolating low-level da
     ├── 📂 parser/                # Low-Level Syntax Parsing
     │   ├── 📜 unzip.js              # Native stream DecompressionStream extractor
     │   ├── 📜 tokenizer.js          # Clausewitz AST regular expression tokenizer
-    │   └── 📜 ParadoxNameResolver.js# Strips engine tracking codes & localizes text tokens
+    │   ├── 📜 ParadoxNameResolver.js# Strips engine tracking codes & localizes text tokens
+    │   └── 📜 rawSchema.js          # Declarative RAW JSON schema manifest for AI models
     │
     ├── 📂 semantic/              # Calculation & Semantic Models
-    │   ├── 📜 schema.js             # Declarative schema manifest contract for AI models
+    │   ├── 📜 schema.js             # Declarative SEMANTIC schema manifest for AI models
     │   ├── 📜 SemanticEmpiresProcessor.js # Normalizes and parses country database records
     │   ├── 📜 SemanticSystemsProcessor.js # Maps galactic coordinate yields and ownership
     │   ├── 📜 SystemDataHelpers.js   # Calculus subroutine mapping planet payloads
@@ -56,8 +58,7 @@ The application enforces a strict separation of concerns, isolating low-level da
         ├── 📜 SystemsScreen.js       # Stellar body candidates locator grid
         ├── 📜 FaqScreen.js           # Actionable step-by-step workflow guide
         ├── 📜 SciFiNavGroup.js       # Tab navigation matrix coordinator
-        ├── 📜 StellarisSpa.js        # Core interface shell and screen viewport router
-        └── 📜 StellarisUiConstants.js# Centralized design system styling tokens
+        └── 📜 StellarisSpa.js        # Core interface shell and screen viewport router
 ```
 
 ---
