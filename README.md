@@ -1,53 +1,103 @@
 # 🌌 STELLARIS SAVE ANALYZER (SSA)
 
-An offline, lightning-fast strategic analyzer and tactical locator for massive Stellaris `.sav` files. Engineered explicitly as a high-performance Browser Client Single Page Application (SPA) without server-side processing dependencies or heavy un-nesting computation loops.
+An offline, lightning-fast strategic analyzer and tactical locator for massive Stellaris `.sav` files. Engineered explicitly as a high-performance Browser Client Single Page Application (SPA) without server-side processing dependencies or heavy computation loops.
 
-🤖 **AI-Engineered (Vibe-Coding)**: This entire project—from core data pipelines and custom AST tokenization to canvas rendering matrices and layout design systems—was fully developed through iterative AI collaboration, bypassing traditional manual coding loops.
+🤖 **AI-Engineered (Vibe-Coding)**: This entire project—from the data pipelines and custom AST tokenization to the canvas rendering matrices and visual component modularization—was fully developed through iterative AI collaboration.
 
-🔗 **Production URL**: [github.io](https://keepcaim.github.io/ssa/)
-
----
-
-## 🚀 CURRENT PRODUCTION FUNCTIONALITY
-
-The application operates as a centralized, lightweight telemetry workbench parsing uploaded save files dynamically in the browser environment.
-
-### 🧠 Core Subsystems Matrix
-
-*   **Decompression Layer**: Integrates the native browser `DecompressionStream` API using `deflate-raw` rules to read and unpack the inner `gamestate` binary file on the fly.
-*   **Clausewitz Tokenizer**: Uses a custom iterative regular expression loop to parse nested block structures, avoiding deep engine recursion stacks while preserving duplicated properties like arrays.
-*   **Theme Design Matrix**: Queries terminal styling primitives from a centralized properties dictionary, managing all interface colors and borders from a single module.
+🔗 **Production URL**: [keepcaim.github.io/ssa/](https://keepcaim.github.io/ssa/)
 
 ---
 
-## 📊 DASHBOARD SCREEN CAPABILITIES
+## 🚀 PROJECT ARCHITECTURE
+
+The application enforces a strict separation of concerns, isolating low-level data parsing from core business arithmetic and visual layout managers. All components strictly adhere to a `<8000 characters` rule to maximize thread processing efficiency.
+
+### 📁 Workspace Directory Structure
+
+```text
+├── 📂 build/
+│   └── 📜 bundle.js              # Production compiled client bundle
+├── 📂 js/
+│   ├── 📜 app.js                 # Lightweight application bootstrap runner
+│   │
+│   ├── 📂 core/                  # Orchestration & Ingestion Layer
+│   │   ├── 📜 StellarisSaveParser.js # Coordinates parsing pipelines to semantic models
+│   │   └── 📜 StorageManager.js     # Manages hardware-accelerated save file ingestion
+│   │
+│   ├── 📂 parser/                # Low-Level Syntax Parsing
+│   │   ├── 📜 unzip.js              # Native stream DecompressionStream extractor
+│   │   ├── 📜 tokenizer.js          # Clausewitz AST regular expression tokenizer
+│   │   └── 📜 ParadoxNameResolver.js# Strips engine tracking codes & localizes text tokens
+│   │
+│   ├── 📂 semantic/              # Calculation & Semantic Models
+│   │   ├── 📜 schema.js             # Declarative schema manifest contract for AI models
+│   │   ├── 📜 SemanticEmpiresProcessor.js # Normalizes and parses country database records
+│   │   ├── 📜 SemanticSystemsProcessor.js # Maps galactic coordinate yields and ownership
+│   │   ├── 📜 SystemDataHelpers.js   # Calculus subroutine mapping planet payloads
+│   │   ├── 📜 SystemSortEngine.js    # Metric column math subtraction engine
+│   │   ├── 📜 SystemConstants.js     # Strategic resource static yield directories
+│   │   └── 📜 ArcFurnaceEvaluator.js # Automated celestial eligibility verification rulebook
+│   │
+│   └── 📂 view/                  # Visual Rendering & Interface Layouts
+│       ├── 📂 components/        # Shared Reusable Layout Elements
+│       │   ├── 📜 SciFiButton.js    # Custom glowing tactical form buttons
+│       │   └── 📜 SciFiTable.js     # Sticky-header accelerated data grid template
+│       │
+│       ├── 📂 map/               # Self-Contained HTML5 Canvas Viewport
+│       │   ├── 📜 MapCamera.js      # Zoom/pan projection matrix and bounding boxes
+│       │   ├── 📜 MapRenderer.js    # High-performance hyperlane vector matrices
+│       │   ├── 📜 MapInteractionManager.js # Decoupled dragging and canvas click tracker
+│       │   └── 📜 MapScreen.js      # Vector workspace graph panel coordinator
+│       │
+│       ├── 📜 EmpiresRenderer.js     # Row badge and ethic node string formatter
+│       ├── 📜 EmpiresScreen.js       # Galactic factions dashboard view panel
+│       ├── 📜 SystemsRenderer.js     # Resource yield grid layout formatter
+│       ├── 📜 SystemsScreen.js       # Stellar body candidates locator grid
+│       ├── 📜 FaqScreen.js           # Actionable step-by-step workflow guide
+│       ├── 📜 SciFiNavGroup.js       # Tab navigation matrix coordinator
+│       ├── 📜 StellarisSpa.js        # Core interface shell and screen viewport router
+│       └── 📜 StellarisUiConstants.js# Centralized design system styling tokens
+```
+
+---
+
+## 📊 WORKBENCH INTERFACE CAPABILITIES
 
 ### 1. Empires Directory View
-*   **Entity Identification**: Indexes every galactic faction with dynamic 3-4 letter acronym tag generations.
-*   **Political Telemetry**: Displays classifications, ethics profiles, and active civics mapped cleanly as color-coded badges.
+*   **Entity Identification**: Indexes galactic factions mapping localized title flags and automatically computes 3-4 letter acronym tags.
+*   **Ideology Matrix Badges**: Displays classifications, ethics trees, and active civics vectors dynamically as color-coded terminal badges.
 *   **Sovereign Ranking**: Features live numeric sorting on Victory Scores, immediately floating top-tier galactic heavyweights.
-*   **Context Preservation**: Caches master selection checkboxes across view screens, avoiding resetting your filters.
+*   **Atomic Badge Sort**: Left-clicking any inline Ethic, Civic, or Empire Type badge instantly clusters the table rows around that specific classification.
 
 ### 2. System Locator Grid
-*   **Unified Resource Aggregations**: Segregates cumulative cosmic yields across 7 discrete granular categories based on real, natural tile blocks.
-*   **Arc Furnace Optimization Locator**: Evaluates potential targets, checks baseline factors, and filters out pre-built station modifiers.
-*   **Badge Group Sorting**: Floats systems containing megastructures or fast transit loops directly to the front rank of data table rows.
-*   **Instant Viewport Focusing**: Resets scrolling coordinates back to top-line indexes automatically upon sorting changes.
+*   **Unified Resource Aggregations**: Segregates cumulative cosmic yields across discrete granular strategic categories (Alloys, Energy, Minerals, Research sciences, Rare strategics).
+*   **Arc Furnace Optimization**: Evaluates celestial sub-body fields, filters out pre-existing system configurations, and tracks exact locations of unbuilt candidate systems.
+*   **Starbase Sorting**: Immediately isolates system coordinates by upgraded outpost station level (Starports, Citadels).
+*   **Context Preservation**: Selection checkboxes are cached across layout switches, preventing filters from resetting when screen jumps occur.
 
 ### 3. Galaxy Map View
-*   **Transformation Pan Matrices**: Features cursor-relative zooming, graph boundary fitting, and node detection bounding fields.
-*   **Tactical Overlay Radio Groups**: Toggles between standard lanes and deep bypass options like gateways, L-gates, or shroud tunnels.
-*   **Analytical Wormhole Vector Channels**: Maps wormholes using explicit link reference indices drawn as high-contrast dashed channels.
-*   **Jump Intercept Transitions**: Allows clicking individual system nodes on the map to jump directly to that row in the Locator view.
+*   **Transformation Cam Matrices**: Features cursor-relative mousewheel zooms, viewport graph boundary fitting, and node detection bounding fields.
+*   **Tactical Overlay Radios**: Toggles on demand between standard baseline hyperlane networks and deep spatial bypass networks.
+*   **Analytical Vector Channels**: Maps natural wormhole anomalies using explicit link reference indices drawn as high-contrast dashed lines.
+*   **Jump Intercept Transitions**: Left-clicking any system node on the canvas instantly focuses your coordinates back to that specific row in the System Locator grid.
 
 ### 4. Tactical Operations Manual
-*   **User Guide Ingestion**: Provides quick step-by-step documentation detailing how to combine filters to map optimal coordinates.
+*   **Actionable Documentation**: Provides a quick step-by-step blueprint guiding interface filter combinations to isolate peak industrial candidate coordinates.
 
 ---
 
-## ⚙️ TECHNICAL ENGINE SPECIFICATIONS
+## ⚙️ DEVELOPMENT PIPELINE & COMPILER SPECS
 
-*   **Interface Layer**: Vanilla ECMAScript Modules (ESM) without build tools or external dependency package overheads.
-*   **Presentation Architecture**: HTML5 Canvas API grids with responsive coordinate multipliers.
-*   **Memory Footprint**: Strictly adheres to a `<8000 characters` rule per component module to protect stream runtime thread integrity.
-*   **Parsing Protections**: Employs structural equality transformations instead of standard math operators to ensure template safety.
+The project operates entirely on native ECMAScript Modules (ESM) packed via a streamlined local development toolchain.
+
+```bash
+# Install toolchain environments 
+npm install
+
+# Spin up live file bundlers and development servers simultaneously
+npm start
+```
+
+*   **Compiler Engine**: `esbuild` monitors `js/app.js` as the entry parameter, mapping all module dependencies to compile a packed file at `build/bundle.js`.
+*   **Environment Stream**: Powered by `concurrently` linking a minified watch-build trigger loop straight alongside a local `live-server` web viewport engine.
+*   **Template Safety**: Employs absolute structural mathematical subtraction data loops within sorting blocks instead of standard generic operators to prevent floating string parsing bugs.
