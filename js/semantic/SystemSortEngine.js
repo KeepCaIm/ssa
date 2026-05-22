@@ -1,9 +1,20 @@
+// js/semantic/SystemSortEngine.js
+
 /**
  * SystemSortEngine
  * Pure functional evaluation layer managing calculation tasks and column subtraction 
  * logic for dense galactic system data grids.
  */
 export class SystemSortEngine {
+  /**
+   * Sorts system data entities based on targeted column values or custom badge matrices.
+   * @param {Object} a - Left-hand comparison object.
+   * @param {Object} b - Right-hand comparison object.
+   * @param {string} sid - Sort identifier string key.
+   * @param {boolean} currentSortAsc - Sorting multiplier direction flag.
+   * @param {string|null} customFilterTargetValue - Target payload matching filter query requirements.
+   * @returns {number} Standard comparison layout pointer value (-1 | 0 | 1).
+   */
   static evaluateSort(a, b, sid, currentSortAsc, customFilterTargetValue) {
     const mult = currentSortAsc ? 1 : -1;
     let isNumericField = false;
@@ -68,8 +79,12 @@ export class SystemSortEngine {
     }
 
     // Standard string fallback comparisons
-    let valA = a[sid]; let valB = b[sid];
-    if (sid === 'star_type') { valA = a.star ? a.star.type : ""; valB = b.star ? b.star.type : ""; }
+    let valA = a[sid]; 
+    let valB = b[sid];
+    if (sid === 'star_type') { 
+      valA = a.star ? a.star.type : ""; 
+      valB = b.star ? b.star.type : ""; 
+    }
     
     return String(valA || "").toLowerCase().localeCompare(String(valB || "").toLowerCase()) * mult;
   }

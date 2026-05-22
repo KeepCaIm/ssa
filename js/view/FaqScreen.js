@@ -1,15 +1,22 @@
-import { STELLARIS_UI } from '../core/Theme.js';
+// js/view/FaqScreen.js
+import { STELLARIS_UI } from './StellarisUiConstants.js';
 
 /**
- * ScreenFAQ
+ * FaqScreen
  * Implements a clean, high-contrast tactical manual view displaying a structured, 
  * actionable guide for isolating peak efficiency Arc Furnace deployment coordinates.
  */
-export class ScreenFAQ {
+export class FaqScreen {
+  /**
+   * @param {HTMLElement} viewport - Target parent container DOM element.
+   */
   constructor(viewport) {
     this.viewport = viewport;
   }
 
+  /**
+   * Clears out buffer nodes and appends the structural documentation layout frame.
+   */
   render() {
     this.viewport.innerHTML = '';
 

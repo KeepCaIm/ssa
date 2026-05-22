@@ -1,11 +1,11 @@
-import { ParadoxNameResolver } from './NameResolver.js';
+// js/semantic/SemanticEmpiresProcessor.js
+import { ParadoxNameResolver } from '../parser/ParadoxNameResolver.js';
 
 /**
- * ProcessorEmpires
- * Extracts political profiles, civic vectors, score metrics, and maps 
- * explicit internal fleet tracking indices from native Clausewitz country database records.
+ * SemanticEmpiresProcessor
+ * Extracts and processes empire entities from raw tokenized Clausewitz country blocks.
  */
-export class ProcessorEmpires {
+export class SemanticEmpiresProcessor {
   static run(countryNode) {
     const empires = [];
     if (!countryNode || typeof countryNode !== 'object') return empires;
@@ -31,8 +31,6 @@ export class ProcessorEmpires {
           }
         });
       }
-
-      // FIXED: Completely stripped diagnostic console logging block loops to optimize thread performance
 
       let ethicsArray = [];
       if (c.ethos && c.ethos.ethic) {

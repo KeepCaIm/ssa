@@ -1,10 +1,17 @@
+// js/semantic/SystemConstants.js
+
 /**
  * SYSTEM_STATIC_REGISTRY
- * Centralized mapping matrix separating raw Clausewitz asset definitions
+ * Centralized structural mapping matrix separating raw Clausewitz asset definitions
  * from visual presentation loops and processing algorithms.
+ * Gives layout engineers an explicit configuration module to modify icons or strings 
+ * without understanding lower-level processing math blocks.
  */
 export const SYSTEM_STATIC_REGISTRY = {
-  // Mapping definitions for individual orbital node strategic yields
+  /**
+   * Mapping definitions for individual orbital node strategic yields.
+   * Modifying these directly affects calculation parsing loops.
+   */
   depositCategories: [
     { key: "energy", cat: "e", defVal: 2 },
     { key: "mineral", cat: "m", defVal: 2 },
@@ -15,9 +22,16 @@ export const SYSTEM_STATIC_REGISTRY = {
     { key: "engineering", cat: "g", defVal: 3 },
     { key: "research", cat: "p", defVal: 3 }
   ],
-  // Map strings for spec specials
+  
+  /**
+   * Map strings for rare specialized strategic items.
+   */
   specials: ["dark_matter", "living_metal", "volatile_motes", "rare_crystals", "exotic_gases"],
-  // Mapping configuration arrays for megastructure UI symbols and reader strings
+  
+  /**
+   * Presentation mapping array config for megastructure UI symbols and reader strings.
+   * UI engineers can modify these icons or naming labels safely without breaking math algorithms.
+   */
   megastructures: [
     { key: "dyson_sphere", icon: "🟡", name: "Dyson Sphere" },
     { key: "dyson_swarm", icon: "🐝", name: "Dyson Swarm" },

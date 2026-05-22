@@ -1,11 +1,15 @@
-import { STELLARIS_UI } from '../core/Theme.js';
+// js/view/EmpiresRenderer.js
+import { STELLARIS_UI } from './StellarisUiConstants.js';
 
 /**
- * EmpireRenderers
+ * EmpiresRenderer
  * Presentation layer component isolating custom DOM badge logic and interactive 
  * click sort vectors driven entirely by the centralized STELLARIS_UI color matrix.
  */
-export class EmpireRenderers {
+export class EmpiresRenderer {
+  /**
+   * Renders color-coded civilization type badges.
+   */
   static renderType(v, row, onCustomSortTrigger) {
     const el = document.createElement('div');
     el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
@@ -45,16 +49,16 @@ export class EmpireRenderers {
     
     b.onclick = (e) => {
       e.stopPropagation();
-      if (onCustomSortTrigger) {
-        // Aligned with the screen's custom filter key tracking signatures
-        onCustomSortTrigger('type_filter', v);
-      }
+      if (onCustomSortTrigger) onCustomSortTrigger('type_filter', v);
     };
     
     el.appendChild(b);
     return el;
   }
 
+  /**
+   * Translates active ideology fields into specific visual matrix badges.
+   */
   static renderEthics(v, row, onCustomSortTrigger) {
     const el = document.createElement('div');
     el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
@@ -87,15 +91,16 @@ export class EmpireRenderers {
       
       b.onclick = (e) => {
         e.stopPropagation();
-        if (onCustomSortTrigger) {
-          onCustomSortTrigger('ethic_filter', eth);
-        }
+        if (onCustomSortTrigger) onCustomSortTrigger('ethic_filter', eth);
       };
       el.appendChild(b);
     });
     return el;
   }
 
+  /**
+   * Formats active state civics vectors into interactive badged blocks.
+   */
   static renderCivics(v, row, onCustomSortTrigger) {
     const el = document.createElement('div');
     el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
@@ -116,9 +121,7 @@ export class EmpireRenderers {
       
       b.onclick = (e) => {
         e.stopPropagation();
-        if (onCustomSortTrigger) {
-          onCustomSortTrigger('civic_filter', civ);
-        }
+        if (onCustomSortTrigger) onCustomSortTrigger('civic_filter', civ);
       };
       el.appendChild(b);
     });

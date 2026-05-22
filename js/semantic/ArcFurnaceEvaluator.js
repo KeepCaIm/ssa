@@ -1,10 +1,19 @@
+// js/semantic/ArcFurnaceEvaluator.js
+
 /**
  * ArcFurnaceEvaluator
  * Dedicated service layer verifying placement rules and computing potential for Arc Furnaces.
  * Isolates deep Clausewitz mechanics from visual presentation modules.
  */
 export class ArcFurnaceEvaluator {
-  // Verifies if a specific celestial body is eligible to receive arc furnace deposits
+  /**
+   * Verifies if a specific celestial body is eligible to receive arc furnace deposits.
+   * @param {Object} pObj - Raw tokenized planet database reference block.
+   * @param {number} index - Planetary listing position inside the solar group array loop.
+   * @param {string} lowClass - Sanitized lowercase string identifying the celestial planet class.
+   * @param {Object} localBreakdown - Pre-aggregated specific strategic resource yield map.
+   * @returns {boolean} True if the orbital segment fits optimal extraction metrics.
+   */
   static isPlanetEligible(pObj, index, lowClass, localBreakdown) {
     // 1. Skip the 0-th index planet slot (this represents the primary central star class descriptor)
     if (index === 0) return false;

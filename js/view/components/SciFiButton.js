@@ -1,6 +1,11 @@
-import { STELLARIS_UI } from '../core/Theme.js';
+// js/view/components/SciFiButton.js
+import { STELLARIS_UI } from '../StellarisUiConstants.js'; // Updated relative path
 
-// Reusable sci-fi button with original stellaris hover glow effects
+/**
+ * SciFiButton
+ * Reusable sci-fi button component applying custom Stellaris layout properties, 
+ * glowing borders, and terminal mouse interactivity loops.
+ */
 export class SciFiButton {
   constructor(text, type = 'primary') {
     this.el = document.createElement('button');

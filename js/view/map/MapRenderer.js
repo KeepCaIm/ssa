@@ -1,5 +1,6 @@
-import { STELLARIS_UI } from '../core/Theme.js';
-import { ParadoxNameResolver } from '../core/NameResolver.js';
+// js/view/map/MapRenderer.js
+import { STELLARIS_UI } from '../StellarisUiConstants.js';
+import { ParadoxNameResolver } from '../../parser/ParadoxNameResolver.js';
 
 /**
  * MapRenderer
@@ -7,6 +8,11 @@ import { ParadoxNameResolver } from '../core/NameResolver.js';
  * draws interconnected systems, dynamic transit networks, and specific wormhole matrices.
  */
 export class MapRenderer {
+  /**
+   * @param {HTMLCanvasElement} canvas - Viewport HTML5 Canvas target node reference.
+   * @param {CanvasRenderingContext2D} ctx - Drawing engine graphics context instance.
+   * @param {Object} camera - Pan and zoom coordinate space transformation camera object.
+   */
   constructor(canvas, ctx, camera) {
     this.canvas = canvas; 
     this.ctx = ctx; 
@@ -17,11 +23,14 @@ export class MapRenderer {
     this.activeTransitFilter = 'none'; 
   }
 
+  /**
+   * Generates background grid matrix guidelines optimized dynamically for active camera scales.
+   */
   drawGrid() {
     const ctx = this.ctx;
     const colors = STELLARIS_UI.colors;
     
-    // FIXED: Skip rendering dense overlapping grids when zooming far out
+    // Skip rendering dense overlapping grids when zooming far out
     const adaptiveInterval = this.camera.zoom < 0.15 ? this.interval * 5 : this.interval;
     const step = Math.round(adaptiveInterval * this.camera.zoom);
     
@@ -45,6 +54,10 @@ export class MapRenderer {
     ctx.stroke();
   }
 
+  /**
+   * Renders the native Clausewitz cosmic network lines linking solar spaces.
+   * @param {Array<Object>} systems - Extracted systems repository items collection.
+   */
   drawHyperlanes(systems) {
     const ctx = this.ctx;
     const colors = STELLARIS_UI.colors;
@@ -73,6 +86,10 @@ export class MapRenderer {
     });
   }
 
+  /**
+   * Links natural wormhole anomalies using distinctive high-contrast vectors.
+   * @param {Array<Object>} systems - Extracted systems repository items collection.
+   */
   drawWormholeLinks(systems) {
     const ctx = this.ctx;
     const whSystems = systems.filter(s => s.fastTravel && s.fastTravel.wormholeGlobalIndex !== null && s.fastTravel.wormholeGlobalIndex !== undefined);
@@ -90,7 +107,7 @@ export class MapRenderer {
       const targetIndex = s.fastTravel.wormholeTargetIndex;
       if (targetIndex === null || targetIndex === undefined) return;
 
-      // FIXED: Safely matches strings instead of integers to preserve large modded maps
+      // Safely matches strings instead of integers to preserve large modded maps
       const partner = whSystems.find(t => t.fastTravel && String(t.fastTravel.wormholeGlobalIndex) === String(targetIndex));
 
       if (partner) {
@@ -109,6 +126,9 @@ export class MapRenderer {
     ctx.restore();
   }
 
+  /**
+   * Draws coordinate planet system dot markers applying customized fade properties on filtered scopes.
+   */
   drawSystems(systems, checkedIdsSet, empires) {
     const ctx = this.ctx;
     const colors = STELLARIS_UI.colors;
@@ -187,6 +207,9 @@ export class MapRenderer {
     });
   }
 
+  /**
+   * Resets viewport visual canvases to baseline deep-space terminal colors.
+   */
   clear() {
     this.ctx.fillStyle = STELLARIS_UI.colors.bg;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);

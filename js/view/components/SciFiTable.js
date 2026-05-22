@@ -1,4 +1,5 @@
-import { STELLARIS_UI } from '../core/Theme.js';
+// js/view/components/SciFiTable.js
+import { STELLARIS_UI } from '../StellarisUiConstants.js'; // Updated relative path
 
 /**
  * SciFiTable
@@ -9,7 +10,7 @@ export class SciFiTable {
   constructor(columns, onCheckChange = null, onBatchCheckChange = null) {
     this.columns = columns;
     this.onCheckChange = onCheckChange;
-    this.onBatchCheckChange = onBatchCheckChange; // Added batch handler capability
+    this.onBatchCheckChange = onBatchCheckChange;
     this.sortColumnId = null;
     this.sortAscending = true;
     this.onSortCallback = null;
@@ -173,16 +174,12 @@ export class SciFiTable {
 
   toggleAllRows(isChecked) {
     const batchedIds = [];
-    
-    // Perform rapid visual update to input nodes without firing expensive DOM events
     this.rowsCache.forEach(row => {
       if (row.input.checked !== isChecked) {
         row.input.checked = isChecked;
         batchedIds.push(row.id);
       }
     });
-
-    // Fire a single localized atomic array change upward to the parent view
     if (this.onBatchCheckChange && batchedIds.length > 0) {
       this.onBatchCheckChange(batchedIds, isChecked);
     }

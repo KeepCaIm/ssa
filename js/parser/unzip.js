@@ -1,13 +1,18 @@
-// Native browser-based high-performance DEFLATE zip extractor using DecompressionStream API
+// parser/unzip.js
+
+/**
+ * Native browser-based high-performance DEFLATE zip extractor using DecompressionStream API.
+ * Scans the archive and extracts only the target 'gamestate' file entry.
+ * @param {ArrayBuffer} zipArrayBuffer 
+ * @returns {Promise<string>} Unpacked gamestate text content
+ */
 export async function unzipGamestateAsync(zipArrayBuffer) {
   const view = new DataView(zipArrayBuffer);
   const uint8 = new Uint8Array(zipArrayBuffer);
   let ptr = 0;
   
-  // Scan the zip archive binary footprint for the 'gamestate' file entry header
   while (ptr < uint8.length - 30) {
-    // Check for local file header signature: 0x04034b50 (PK\x03\x04)
-    if (view.getUint32(ptr, true) === 0x04034b50) {
+    if (view.getUint32(ptr, true) === 0x04034b50) { // PK\x03\x04
       const compMethod = view.getUint16(ptr + 8, true);
       const compressedSize = view.getUint32(ptr + 18, true);
       const fileNameLen = view.getUint16(ptr + 26, true);
@@ -25,12 +30,10 @@ export async function unzipGamestateAsync(zipArrayBuffer) {
         const compressedSlice = uint8.slice(dataOffset, dataOffset + compressedSize);
         
         if (compMethod === 8) {
-          // Stream the raw bytes directly into the browser kernel's hardware-accelerated C++ decompressor
           const blob = new Blob([compressedSlice]);
-          const decompressionStream = new DecompressionStream("deflate-raw");
-          const decompressedStream = blob.stream().pipeThrough(decompressionStream);
-          
-          const response = new Response(decompressedStream);
+          const decompStream = new DecompressionStream("deflate-raw");
+          const resStream = blob.stream().pipeThrough(decompStream);
+          const response = new Response(resStream);
           const buffer = await response.arrayBuffer();
           return new TextDecoder("utf-8").decode(buffer);
         } else if (compMethod === 0) {

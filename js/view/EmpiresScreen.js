@@ -1,13 +1,14 @@
-import { SciFiTable } from '../components/Table.js';
-import { EmpireRenderers } from '../components/EmpireRenderers.js';
-import { STELLARIS_UI } from '../core/Theme.js';
+// js/view/EmpiresScreen.js
+import { SciFiTable } from './components/SciFiTable.js';
+import { EmpiresRenderer } from './EmpiresRenderer.js';
+import { STELLARIS_UI } from './StellarisUiConstants.js';
 
 /**
- * ScreenEmpires
+ * EmpiresScreen
  * Coordinates the empires overview matrix grid, manages sorting caches persistent 
  * across view switches, and binds custom presentation token maps.
  */
-export class ScreenEmpires {
+export class EmpiresScreen {
   constructor(viewport, saveData, activeSelectionStateSet, onSelectionMatrixChange, initialSortId, initialSortAsc, onSortStateChange) {
     this.viewport = viewport; 
     this.saveData = saveData;
@@ -32,9 +33,9 @@ export class ScreenEmpires {
           d.style.cssText = `color:${STELLARIS_UI.colors.text}; font-weight:bold;`; 
           return d;
       }},
-      { id: 'type', title: 'Classification Type', width: '14%', sortable: true, render: (v, r) => EmpireRenderers.renderType(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
-      { id: 'ethics', title: 'Governing Ethics Profile', width: '22%', sortable: true, render: (v, r) => EmpireRenderers.renderEthics(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
-      { id: 'civics', title: 'Active Civic Models', width: '20%', sortable: true, render: (v, r) => EmpireRenderers.renderCivics(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
+      { id: 'type', title: 'Classification Type', width: '14%', sortable: true, render: (v, r) => EmpiresRenderer.renderType(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
+      { id: 'ethics', title: 'Governing Ethics Profile', width: '22%', sortable: true, render: (v, r) => EmpiresRenderer.renderEthics(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
+      { id: 'civics', title: 'Active Civic Models', width: '20%', sortable: true, render: (v, r) => EmpiresRenderer.renderCivics(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
       { id: 'score', title: 'Score', width: '6%', sortable: true, render: v => {
           const s = document.createElement('span');
           s.innerText = Math.round(v).toLocaleString();
@@ -57,8 +58,6 @@ export class ScreenEmpires {
     this.tableInstance.onSort((sortId, isAsc) => {
       this.customFilterTargetValue = null;
       this.currentSortId = sortId; 
-      
-      // FIXED: Force numeric SCORE field to group from largest to smallest upon initial click
       this.currentSortAsc = (sortId === 'score') ? !isAsc : isAsc;
       
       if (this.onSortStateChange !== null && this.onSortStateChange !== undefined) {
@@ -87,14 +86,12 @@ export class ScreenEmpires {
     const mult = this.currentSortAsc ? 1 : -1;
 
     rows.sort((a, b) => {
-      // FIXED: Badge Presence Layer Grouping for Ethics column sorting
       if (sid === 'ethics') {
         const hasA = a.ethics !== undefined && a.ethics.length !== 0 && a.ethics.length > 0;
         const hasB = b.ethics !== undefined && b.ethics.length !== 0 && b.ethics.length > 0;
         if (hasA !== hasB) return hasA ? -1 : 1;
         return (parseFloat(a.ethics?.length || 0) - parseFloat(b.ethics?.length || 0)) * mult;
       }
-      // FIXED: Badge Presence Layer Grouping for Civics column sorting
       else if (sid === 'civics') {
         const hasA = a.civics !== undefined && a.civics.length !== 0 && a.civics.length > 0;
         const hasB = b.civics !== undefined && b.civics.length !== 0 && b.civics.length > 0;

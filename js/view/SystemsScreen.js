@@ -1,17 +1,22 @@
-import { SciFiTable } from '../components/Table.js';
-import { SystemRenderers } from '../components/SystemRenderers.js';
-import { SystemSortEngine } from '../core/SystemSortEngine.js';
+// js/view/SystemsScreen.js
+import { SciFiTable } from './components/SciFiTable.js';
+import { SystemsRenderer } from './SystemsRenderer.js';
+import { SystemSortEngine } from '../semantic/SystemSortEngine.js';
 
 /**
- * ScreenSystems
+ * SystemsScreen
  * Presentation view coordinator arranging columns and piping data lists into the sort engine.
  */
-export class ScreenSystems {
+export class SystemsScreen {
   constructor(viewport, saveData, activeEmpireIdsSet, activeSystemIdsSet, onSystemSelectionChange, initialSortId, initialSortAsc, onSortStateChange) {
-    this.viewport = viewport; this.saveData = saveData;
-    this.activeEmpireIdsSet = activeEmpireIdsSet; this.activeSystemIdsSet = activeSystemIdsSet;
-    this.onSystemSelectionChange = onSystemSelectionChange; this.tableInstance = null; 
-    this.currentSortId = initialSortId || 'id'; this.currentSortAsc = initialSortAsc !== undefined ? initialSortAsc : true;
+    this.viewport = viewport; 
+    this.saveData = saveData;
+    this.activeEmpireIdsSet = activeEmpireIdsSet; 
+    this.activeSystemIdsSet = activeSystemIdsSet;
+    this.onSystemSelectionChange = onSystemSelectionChange; 
+    this.tableInstance = null; 
+    this.currentSortId = initialSortId || 'id'; 
+    this.currentSortAsc = initialSortAsc !== undefined ? initialSortAsc : true;
     this.onSortStateChange = onSortStateChange;
     this.customFilterTargetValue = null; 
   }
@@ -23,12 +28,12 @@ export class ScreenSystems {
       { id: 'id', title: 'ID', width: '5%', sortable: true },
       { id: 'name', title: 'System Node', width: '12%', sortable: true },
       { id: 'ownerTag', title: 'Owner', width: '7%', sortable: true }, 
-      { id: 'star_type', title: 'Star Type', width: '12%', sortable: true, render: SystemRenderers.renderStar },
-      { id: 'starYieldsPayload', title: 'Star Yields', width: '12%', sortable: true, render: SystemRenderers.renderStarYields },
-      { id: 'resourcesPayload', title: 'System Yields', width: '15%', sortable: true, render: SystemRenderers.renderSplitResources },
-      { id: 'bodies', title: 'Bodies', width: '5%', sortable: true, render: SystemRenderers.renderBodies },
-      { id: 'moltenArc', title: 'Molten (Arc Deposits)', width: '10%', sortable: true, render: SystemRenderers.renderMoltenArc },
-      { id: 'megastructures', title: 'Megastructure', width: '12%', sortable: true, render: (v, r) => SystemRenderers.renderMegastructures(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) },
+      { id: 'star_type', title: 'Star Type', width: '12%', sortable: true, render: SystemsRenderer.renderStar },
+      { id: 'starYieldsPayload', title: 'Star Yields', width: '12%', sortable: true, render: SystemsRenderer.renderStarYields },
+      { id: 'resourcesPayload', title: 'System Yields', width: '15%', sortable: true, render: SystemsRenderer.renderSplitResources },
+      { id: 'bodies', title: 'Bodies', width: '5%', sortable: true, render: SystemsRenderer.renderBodies },
+      { id: 'moltenArc', title: 'Molten (Arc Deposits)', width: '10%', sortable: true, render: SystemsRenderer.renderMoltenArc },
+      { id: 'megastructures', title: 'Megastructure', width: '12%', sortable: true, render: (v, r) => SystemsRenderer.renderMegastructures(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) },
       { id: 'starbaseLevel', title: 'Starbase', width: '5%', sortable: true, render: v => {
           const s = document.createElement('span'); 
           s.innerText = String(v).toUpperCase();
@@ -36,7 +41,7 @@ export class ScreenSystems {
           if (v !== "none" && v !== "outpost") s.style.fontWeight = 'bold'; 
           return s;
       }},
-      { id: 'fastTravel', title: 'Fast Transit', width: '10%', sortable: true, render: (v, r) => SystemRenderers.renderFastTravel(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) }
+      { id: 'fastTravel', title: 'Fast Transit', width: '10%', sortable: true, render: (v, r) => SystemsRenderer.renderFastTravel(v, r, (type, name) => this.executeCustomBadgeSort(type, name)) }
     ];
 
     this.tableInstance = new SciFiTable(cols, (rowData, isChecked) => {
@@ -65,8 +70,11 @@ export class ScreenSystems {
   }
 
   executeCustomBadgeSort(sortType, targetValue) {
-    this.currentSortId = sortType; this.currentSortAsc = false; this.customFilterTargetValue = targetValue;
-    if (this.onSortStateChange) this.onSortStateChange(sortType, false); this.refreshDataPayload();
+    this.currentSortId = sortType; 
+    this.currentSortAsc = false; 
+    this.customFilterTargetValue = targetValue;
+    if (this.onSortStateChange) this.onSortStateChange(sortType, false); 
+    this.refreshDataPayload();
   }
 
   refreshDataPayload() {
@@ -80,7 +88,6 @@ export class ScreenSystems {
       return { ...sys, ownerTag: emp ? `[${emp.tag}]` : "[None]" };
     });
 
-    // Pipe sorting calculation checks out into specialized static processor
     rows.sort((a, b) => SystemSortEngine.evaluateSort(a, b, this.currentSortId, this.currentSortAsc, this.customFilterTargetValue));
 
     this.tableInstance.sortColumnId = this.currentSortId; 

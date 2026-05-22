@@ -1,8 +1,19 @@
-import { ParadoxNameResolver } from './NameResolver.js';
+// js/semantic/SystemDataHelpers.js
+import { ParadoxNameResolver } from '../parser/ParadoxNameResolver.js';
 import { ArcFurnaceEvaluator } from './ArcFurnaceEvaluator.js';
 import { SYSTEM_STATIC_REGISTRY } from './SystemConstants.js';
 
+/**
+ * SystemDataHelpers
+ * Mathematical processing functions calculating celestial yields,
+ * bypass network topologies, and raw planetary deposit values.
+ */
 export class SystemDataHelpers {
+  /**
+   * Scans a Paradox deposit identifier name string and converts it into a structural yield value category.
+   * @param {string} typeStr - Raw internal identifier string of the target deposit.
+   * @returns {Object} Extracted data containing integer value and string classification category identifier.
+   */
   static extractValueFromDepositType(typeStr) {
     if (!typeStr) return { val: 0, cat: "unknown" };
     const low = typeStr.replace(/"/g, '').trim().toLowerCase();
@@ -11,13 +22,16 @@ export class SystemDataHelpers {
     if (low.includes("rich_mountain")) return { val: 4, cat: "m" };
     if (low.includes("ore_rich_caverns")) return { val: 2, cat: "m" };
 
-    let cat = "unknown"; let baseVal = 0;
+    let cat = "unknown"; 
+    let baseVal = 0;
     const matchCat = SYSTEM_STATIC_REGISTRY.depositCategories.find(c => low.includes(c.key));
     
     if (matchCat) {
-      cat = matchCat.cat; baseVal = matchCat.defVal;
+      cat = matchCat.cat; 
+      baseVal = matchCat.defVal;
     } else if (SYSTEM_STATIC_REGISTRY.specials.some(s => low.includes(s))) {
-      cat = "n"; baseVal = 2;
+      cat = "n"; 
+      baseVal = 2;
     }
 
     if (cat === "unknown") return { val: 0, cat: "unknown" };
@@ -26,6 +40,9 @@ export class SystemDataHelpers {
     return { val, cat };
   }
 
+  /**
+   * Extracts planetary datasets, mapping local breakdowns and calculating Arc Furnace viability flags.
+   */
   static parsePlanets(s, rootJson, planetsBlock, out) {
     let pIds = Array.isArray(s.planet) ? s.planet : (s.planet?._list || (s.planet ? [s.planet] : []));
     let depDb = rootJson.deposit || rootJson.deposits || null;
@@ -54,7 +71,10 @@ export class SystemDataHelpers {
       if (!cleanId || cleanId === "undefined") return;
       out.planetCount++;
       const pObj = planetsBlock ? planetsBlock[cleanId] : null;
-      if (!pObj) { out.celestialList.push({ id: cleanId, name: `Body ${cleanId}`, type: "Unscanned" }); return; }
+      if (!pObj) { 
+        out.celestialList.push({ id: cleanId, name: `Body ${cleanId}`, type: "Unscanned" }); 
+        return; 
+      }
 
       const pName = ParadoxNameResolver.resolve(pObj.name || "Unknown");
       const pClass = ParadoxNameResolver.cleanString(String(pObj.planet_class || "unknown"));
@@ -70,7 +90,8 @@ export class SystemDataHelpers {
         if (res.cat === "unknown" || res.val <= 0) return;
         const cType = d.type.replace(/"/g, '').trim().toLowerCase();
         if (isCol && !cType.includes("d_minerals_") && !cType.includes("d_energy_") && !cType.includes("d_alloys_") && !cType.includes("d_physics_") && !cType.includes("d_engineering_") && !cType.includes("d_society_")) return;
-        out.resBreakdown[res.cat] += res.val; localBreakdown[res.cat] += res.val;
+        out.resBreakdown[res.cat] += res.val; 
+        localBreakdown[res.cat] += res.val;
       });
 
       if (ArcFurnaceEvaluator.isPlanetEligible(pObj, index, pClass.toLowerCase(), localBreakdown)) out.arcEligibleCount++;
@@ -78,6 +99,9 @@ export class SystemDataHelpers {
     });
   }
 
+  /**
+   * Indexes systems housing pre-built galactic megastructures.
+   */
   static parseMegastructures(s, rootJson, found) {
     let mIds = Array.isArray(s.megastructures) ? s.megastructures : (s.megastructures?._list || (s.megastructures ? [s.megastructures] : []));
     let db = rootJson.megastructures || rootJson.megastructure || null;
@@ -88,10 +112,15 @@ export class SystemDataHelpers {
       if (!obj && rootJson.megastructure) obj = rootJson.megastructure[cId];
       if (obj?.type) {
         found.push({ id: cId, type: ParadoxNameResolver.cleanString(String(obj.type).trim()), rawType: String(obj.type).trim(), owner: obj.owner !== undefined ? String(obj.owner).trim() : "none" });
-      } else { found.push({ id: cId, type: "Facility Structure", rawType: "unknown", owner: "none" }); }
+      } else { 
+        found.push({ id: cId, type: "Facility Structure", rawType: "unknown", owner: "none" }); 
+      }
     });
   }
 
+  /**
+   * Scans bypass structures like wormholes or activated gateway infrastructures.
+   */
   static parseBypasses(s, rootJson, ft, sysId) {
     if (s.natural_wormholes !== undefined) ft.wormhole = true;
     if (s.flags) {
@@ -109,7 +138,8 @@ export class SystemDataHelpers {
       if (bp?.type) {
         const t = String(bp.type).toLowerCase();
         if (t.includes("wormhole")) {
-          ft.wormhole = true; ft.wormholeGlobalIndex = cId;
+          ft.wormhole = true; 
+          ft.wormholeGlobalIndex = cId;
           if (bp.linked_to !== undefined) ft.wormholeTargetIndex = String(typeof bp.linked_to === 'object' ? bp.linked_to.key || bp.linked_to.value : bp.linked_to).trim();
         }
         if (t.includes("gateway")) ft.gate = true;

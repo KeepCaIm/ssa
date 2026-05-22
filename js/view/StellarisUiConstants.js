@@ -1,7 +1,10 @@
+// js/view/StellarisUiConstants.js
+
 /**
  * STELLARIS_UI
  * Centralized design system token archive mapping typography, specific asset color channels,
  * dashboard border glow primitives, and presentation style mixins.
+ * UI designers can modify colors and badge sizes here without touching lower-level mechanics.
  */
 export const STELLARIS_UI = {
   font: '"Lucida Grande", "Lucida Sans Unicode", "DejaVu Sans", Arial, sans-serif',
@@ -25,7 +28,7 @@ export const STELLARIS_UI = {
     
     // Core Semantic Empire Type Palette
     empStandard: '#3cdbb4',    // Vibrant terminal Teal-Green
-    empGeneric: '#8ba5bf',     // Low-saturation Slate Grey for general 🌐 factions
+    empGeneric: '#8ba5bf',     // Low-saturation Slate Grey for general factions
     empFallen: '#ffb900',      // Deep cosmic gold
     empEnclave: '#cf5ce6',     // Mystic violet/magenta
     empCrisis: '#ff3b3b',      // Aggressive war red

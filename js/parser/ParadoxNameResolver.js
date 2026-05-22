@@ -1,3 +1,5 @@
+// js/parser/ParadoxNameResolver.js
+
 /**
  * ParadoxNameResolver
  * Strips Paradox engine tracking codes, sanitizes structural variables array 
@@ -66,8 +68,6 @@ export class ParadoxNameResolver {
       .map(word => {
         if (word.length === 0) return "";
         const firstLetter = word.charAt(0).toUpperCase();
-        
-        // FIXED: Only slice remainder if the word actually contains extra letters
         const remainder = word.length > 1 ? word.slice(1) : "";
         return firstLetter + remainder;
       })

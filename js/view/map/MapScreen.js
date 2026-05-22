@@ -1,7 +1,15 @@
-import { GalaxyMap } from '../components/Map.js';
-import { STELLARIS_UI } from '../core/Theme.js';
+// js/view/map/MapScreen.js
+import { STELLARIS_UI } from '../StellarisUiConstants.js';
+import { MapCamera } from './MapCamera.js';
+import { MapRenderer } from './MapRenderer.js';
+import { MapInteractionManager } from './MapInteractionManager.js';
 
-export class ScreenMap {
+/**
+ * MapScreen
+ * Coordinates the tactical HTML5 Canvas galaxy viewport screen, hosting 
+ * toolbar configurations, layout nodes, and triggering draw frame loops.
+ */
+export class MapScreen {
   constructor(viewport, saveData, activeSystemIdsSet, activeEmpireIdsSet, initialCameraState, onSystemNodeMapClick, onCameraStateMutation) {
     this.viewport = viewport;
     this.saveData = saveData;
@@ -10,19 +18,27 @@ export class ScreenMap {
     this.initialCameraState = initialCameraState; 
     this.onSystemNodeMapClick = onSystemNodeMapClick;
     this.onCameraStateMutation = onCameraStateMutation; 
+    
     this.activeTransitFilter = 'none'; 
-    this.mapInstance = null;
+    this.systems = this.saveData.systems || [];
+    this.empires = this.saveData.empires || [];
+
+    this.el = document.createElement('canvas');
+    this.ctx = this.el.getContext('2d');
+    this.camera = new MapCamera(this.el);
+    this.renderer = new MapRenderer(this.el, this.ctx, this.camera);
+    
+    // Wire up decoupled interactions manager block
+    this.interactionManager = new MapInteractionManager(this);
   }
 
   render() {
     this.viewport.innerHTML = '';
-
     const container = document.createElement('div');
     container.style.cssText = STELLARIS_UI.styles.fullFrame + 'display:flex; flex-direction:column; position:relative;';
 
     const controlPanel = document.createElement('div');
     controlPanel.style.cssText = `padding:10px; background:${STELLARIS_UI.colors.panelBgLight}; border-bottom:1px solid ${STELLARIS_UI.colors.border}; display:flex; gap:15px; align-items:center; z-index:5; font-family:${STELLARIS_UI.font}; font-size:11px; font-weight:bold; color:${STELLARIS_UI.colors.textHeader}; letter-spacing:1px;`;
-    
     controlPanel.innerText = "TACTICAL TRANSIT OVERLAY:";
 
     const options = [
@@ -36,7 +52,6 @@ export class ScreenMap {
     options.forEach(opt => {
       const label = document.createElement('label');
       label.style.cssText = 'display:flex; align-items:center; gap:5px; cursor:pointer; color:#fff;';
-
       const radio = document.createElement('input');
       radio.type = 'radio';
       radio.name = 'transitFilter';
@@ -46,10 +61,8 @@ export class ScreenMap {
 
       radio.addEventListener('change', (e) => {
         this.activeTransitFilter = e.target.value;
-        if (this.mapInstance) {
-          this.mapInstance.activeTransitFilter = this.activeTransitFilter;
-          this.mapInstance.render();
-        }
+        this.renderer.activeTransitFilter = this.activeTransitFilter;
+        this.drawFrame();
       });
 
       label.appendChild(radio);
@@ -58,40 +71,41 @@ export class ScreenMap {
     });
 
     container.appendChild(controlPanel);
-
     const canvasWrapper = document.createElement('div');
     canvasWrapper.style.cssText = 'flex:1; width:100%; height:100%; position:relative; overflow:hidden;';
+    this.el.style.cssText = 'width:100%; height:100%; display:block;';
+    
+    canvasWrapper.appendChild(this.el);
     container.appendChild(canvasWrapper);
-
-    this.mapInstance = new GalaxyMap((clickedSys) => {
-      this.onSystemNodeMapClick(clickedSys); 
-    }, (updatedState) => {
-      this.onCameraStateMutation(updatedState);
-    });
-
-    this.mapInstance.activeTransitFilter = this.activeTransitFilter; 
-    canvasWrapper.appendChild(this.mapInstance.el);
     this.viewport.appendChild(container);
     
-    // FIXED: Shift execution to requestAnimationFrame so canvas dimensions evaluate correctly after DOM mount
+    this.interactionManager.attach();
+
     requestAnimationFrame(() => {
-      if (!this.mapInstance) return;
-      this.mapInstance.camera.resize();
-      this.mapInstance.setViewport(
-        this.saveData.systems || [], 
-        this.activeSystemIdsSet, 
-        this.saveData.empires || [],
-        this.initialCameraState,
-        this.activeEmpireIdsSet 
-      );
+      this.camera.resize();
+      this.renderer.checkedEmpireIdsSet = this.activeEmpireIdsSet;
+      this.renderer.activeTransitFilter = this.activeTransitFilter;
+
+      if (this.initialCameraState) {
+        this.camera.zoom = this.initialCameraState.zoom;
+        this.camera.panX = this.initialCameraState.panX;
+        this.camera.panY = this.initialCameraState.panY;
+      } else {
+        this.camera.fitBounds(this.systems);
+      }
+      this.drawFrame();
     });
   }
 
-  // FIXED: Dismount hook routed straight from app.js router loops
+  drawFrame() {
+    this.renderer.clear();
+    this.renderer.drawGrid();
+    this.renderer.drawHyperlanes(this.systems);
+    if (this.activeTransitFilter === 'wormhole') this.renderer.drawWormholeLinks(this.systems);
+    this.renderer.drawSystems(this.systems, this.activeSystemIdsSet, this.empires);
+  }
+
   destroy() {
-    if (this.mapInstance) {
-      this.mapInstance.destroy();
-      this.mapInstance = null;
-    }
+    this.interactionManager.detach();
   }
 }
