@@ -14,7 +14,6 @@ The application enforces a strict separation of concerns, isolating low-level da
 
 ### 📁 Workspace Directory Structure
 
-
 ```text
 ├── 📜 index.html                 # Main application client HTML framework markup
 ├── 📂 build/
@@ -37,14 +36,15 @@ The application enforces a strict separation of concerns, isolating low-level da
     │   ├── 📜 SemanticEmpiresProcessor.js # Normalizes and parses country database records
     │   ├── 📜 SemanticSystemsProcessor.js # Maps galactic coordinate yields and ownership
     │   ├── 📜 SystemDataHelpers.js   # Calculus subroutine mapping planet payloads
-    │   ├── 📜 SystemSortEngine.js    # Metric column math subtraction engine
-    │   ├── 📜 SystemConstants.js     # Strategic resource static yield directories
+    │   ├── 📜 UniversalSortEngine.js # Refactored pure functional configuration-driven sorting engine
+    │   ├── 📜 SystemConstants.js    # Strategic resource static yield directories
     │   └── 📜 ArcFurnaceEvaluator.js # Automated celestial eligibility verification rulebook
     │
     └── 📂 view/                  # Visual Rendering & Interface Layouts
         ├── 📂 components/        # Shared Reusable Layout Elements
         │   ├── 📜 SciFiButton.js    # Custom glowing tactical form buttons
-        │   └── 📜 SciFiTable.js     # Sticky-header accelerated data grid template
+        │   ├── 📜 SciFiTable.js     # Streamlined data grid with dynamic scrolling and dataKey mappings
+        │   └── 📜 SciFiBadge.js     # Reusable tactical badge element with decoupled click actions
         │
         ├── 📂 map/               # Self-Contained HTML5 Canvas Viewport
         │   ├── 📜 MapCamera.js      # Zoom/pan projection matrix and bounding boxes
@@ -52,10 +52,14 @@ The application enforces a strict separation of concerns, isolating low-level da
         │   ├── 📜 MapInteractionManager.js # Decoupled dragging and canvas click tracker
         │   └── 📜 MapScreen.js      # Vector workspace graph panel coordinator
         │
+        ├── 📂 systems/           # Isolated Solar Domain Module Subsystem
+        │   ├── 📜 SystemsColumnConfig.js # Declarative column settings for systems grid
+        │   ├── 📜 SystemsRendererHelper.js # Casing and mapping utilities for stellar systems
+        │   ├── 📜 SystemsRenderer.js # Polymorphic star and fast transit visual engine
+        │   └── 📜 SystemsScreen.js # High-performance clean-data candidates layout coordinator
+        │
         ├── 📜 EmpiresRenderer.js     # Row badge and ethic node string formatter
         ├── 📜 EmpiresScreen.js       # Galactic factions dashboard view panel
-        ├── 📜 SystemsRenderer.js     # Resource yield grid layout formatter
-        ├── 📜 SystemsScreen.js       # Stellar body candidates locator grid
         ├── 📜 FaqScreen.js           # Actionable step-by-step workflow guide
         ├── 📜 SciFiNavGroup.js       # Tab navigation matrix coordinator
         └── 📜 StellarisSpa.js        # Core interface shell and screen viewport router

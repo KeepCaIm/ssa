@@ -4,9 +4,9 @@ import { SciFiNavGroup } from './SciFiNavGroup.js';
 import { StorageManager } from '../core/StorageManager.js';
 
 import { EmpiresScreen } from './EmpiresScreen.js'; 
-import { SystemsScreen } from './SystemsScreen.js'; 
+import { SystemsScreen } from './systems/SystemsScreen.js'; 
 import { MapScreen } from './map/MapScreen.js';
-import { FaqScreen } from './FaqScreen.js';         
+import { FaqScreen } from './FaqScreen.js';
 
 /**
  * StellarisSpa
