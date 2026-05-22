@@ -10,53 +10,54 @@ An offline, lightning-fast strategic analyzer and tactical locator for massive S
 
 ## 🚀 PROJECT ARCHITECTURE
 
-The application enforces a strict separation of concerns, isolating low-level data parsing from core business arithmetic and visual layout managers. All components strictly adhere to a `<8000 characters` rule to maximize thread processing efficiency.
+The application enforces a strict separation of concerns, isolating low-level data parsing from core business arithmetic and visual layout managers to ensure smooth layout execution and rendering thread integrity.
 
 ### 📁 Workspace Directory Structure
 
 ```text
+├── 📜 index.html                 # Main application client HTML framework markup
 ├── 📂 build/
 │   └── 📜 bundle.js              # Production compiled client bundle
-├── 📂 js/
-│   ├── 📜 app.js                 # Lightweight application bootstrap runner
-│   │
-│   ├── 📂 core/                  # Orchestration & Ingestion Layer
-│   │   ├── 📜 StellarisSaveParser.js # Coordinates parsing pipelines to semantic models
-│   │   └── 📜 StorageManager.js     # Manages hardware-accelerated save file ingestion
-│   │
-│   ├── 📂 parser/                # Low-Level Syntax Parsing
-│   │   ├── 📜 unzip.js              # Native stream DecompressionStream extractor
-│   │   ├── 📜 tokenizer.js          # Clausewitz AST regular expression tokenizer
-│   │   └── 📜 ParadoxNameResolver.js# Strips engine tracking codes & localizes text tokens
-│   │
-│   ├── 📂 semantic/              # Calculation & Semantic Models
-│   │   ├── 📜 schema.js             # Declarative schema manifest contract for AI models
-│   │   ├── 📜 SemanticEmpiresProcessor.js # Normalizes and parses country database records
-│   │   ├── 📜 SemanticSystemsProcessor.js # Maps galactic coordinate yields and ownership
-│   │   ├── 📜 SystemDataHelpers.js   # Calculus subroutine mapping planet payloads
-│   │   ├── 📜 SystemSortEngine.js    # Metric column math subtraction engine
-│   │   ├── 📜 SystemConstants.js     # Strategic resource static yield directories
-│   │   └── 📜 ArcFurnaceEvaluator.js # Automated celestial eligibility verification rulebook
-│   │
-│   └── 📂 view/                  # Visual Rendering & Interface Layouts
-│       ├── 📂 components/        # Shared Reusable Layout Elements
-│       │   ├── 📜 SciFiButton.js    # Custom glowing tactical form buttons
-│       │   └── 📜 SciFiTable.js     # Sticky-header accelerated data grid template
-│       │
-│       ├── 📂 map/               # Self-Contained HTML5 Canvas Viewport
-│       │   ├── 📜 MapCamera.js      # Zoom/pan projection matrix and bounding boxes
-│       │   ├── 📜 MapRenderer.js    # High-performance hyperlane vector matrices
-│       │   ├── 📜 MapInteractionManager.js # Decoupled dragging and canvas click tracker
-│       │   └── 📜 MapScreen.js      # Vector workspace graph panel coordinator
-│       │
-│       ├── 📜 EmpiresRenderer.js     # Row badge and ethic node string formatter
-│       ├── 📜 EmpiresScreen.js       # Galactic factions dashboard view panel
-│       ├── 📜 SystemsRenderer.js     # Resource yield grid layout formatter
-│       ├── 📜 SystemsScreen.js       # Stellar body candidates locator grid
-│       ├── 📜 FaqScreen.js           # Actionable step-by-step workflow guide
-│       ├── 📜 SciFiNavGroup.js       # Tab navigation matrix coordinator
-│       ├── 📜 StellarisSpa.js        # Core interface shell and screen viewport router
-│       └── 📜 StellarisUiConstants.js# Centralized design system styling tokens
+└── 📂 js/
+    ├── 📜 app.js                 # Lightweight application bootstrap runner
+    │
+    ├── 📂 core/                  # Orchestration & Ingestion Layer
+    │   ├── 📜 StellarisSaveParser.js # Coordinates parsing pipelines to semantic models
+    │   └── 📜 StorageManager.js     # Manages hardware-accelerated save file ingestion
+    │
+    ├── 📂 parser/                # Low-Level Syntax Parsing
+    │   ├── 📜 unzip.js              # Native stream DecompressionStream extractor
+    │   ├── 📜 tokenizer.js          # Clausewitz AST regular expression tokenizer
+    │   └── 📜 ParadoxNameResolver.js# Strips engine tracking codes & localizes text tokens
+    │
+    ├── 📂 semantic/              # Calculation & Semantic Models
+    │   ├── 📜 schema.js             # Declarative schema manifest contract for AI models
+    │   ├── 📜 SemanticEmpiresProcessor.js # Normalizes and parses country database records
+    │   ├── 📜 SemanticSystemsProcessor.js # Maps galactic coordinate yields and ownership
+    │   ├── 📜 SystemDataHelpers.js   # Calculus subroutine mapping planet payloads
+    │   ├── 📜 SystemSortEngine.js    # Metric column math subtraction engine
+    │   ├── 📜 SystemConstants.js     # Strategic resource static yield directories
+    │   └── 📜 ArcFurnaceEvaluator.js # Automated celestial eligibility verification rulebook
+    │
+    └── 📂 view/                  # Visual Rendering & Interface Layouts
+        ├── 📂 components/        # Shared Reusable Layout Elements
+        │   ├── 📜 SciFiButton.js    # Custom glowing tactical form buttons
+        │   └── 📜 SciFiTable.js     # Sticky-header accelerated data grid template
+        │
+        ├── 📂 map/               # Self-Contained HTML5 Canvas Viewport
+        │   ├── 📜 MapCamera.js      # Zoom/pan projection matrix and bounding boxes
+        │   ├── 📜 MapRenderer.js    # High-performance hyperlane vector matrices
+        │   ├── 📜 MapInteractionManager.js # Decoupled dragging and canvas click tracker
+        │   └── 📜 MapScreen.js      # Vector workspace graph panel coordinator
+        │
+        ├── 📜 EmpiresRenderer.js     # Row badge and ethic node string formatter
+        ├── 📜 EmpiresScreen.js       # Galactic factions dashboard view panel
+        ├── 📜 SystemsRenderer.js     # Resource yield grid layout formatter
+        ├── 📜 SystemsScreen.js       # Stellar body candidates locator grid
+        ├── 📜 FaqScreen.js           # Actionable step-by-step workflow guide
+        ├── 📜 SciFiNavGroup.js       # Tab navigation matrix coordinator
+        ├── 📜 StellarisSpa.js        # Core interface shell and screen viewport router
+        └── 📜 StellarisUiConstants.js# Centralized design system styling tokens
 ```
 
 ---
@@ -97,7 +98,3 @@ npm install
 # Spin up live file bundlers and development servers simultaneously
 npm start
 ```
-
-*   **Compiler Engine**: `esbuild` monitors `js/app.js` as the entry parameter, mapping all module dependencies to compile a packed file at `build/bundle.js`.
-*   **Environment Stream**: Powered by `concurrently` linking a minified watch-build trigger loop straight alongside a local `live-server` web viewport engine.
-*   **Template Safety**: Employs absolute structural mathematical subtraction data loops within sorting blocks instead of standard generic operators to prevent floating string parsing bugs.
