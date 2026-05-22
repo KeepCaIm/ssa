@@ -1,20 +1,21 @@
-// js/view/components/SciFiTable.js
-import { STELLARIS_UI } from '../StellarisUiConstants.js'; // Updated relative path
+import { STELLARIS_UI } from '../StellarisUiConstants.js';
+import { UniversalSortEngine } from '../../semantic/UniversalSortEngine.js';
 
-/**
- * SciFiTable
- * Reusable data grid utilizing global design tokens for dynamic row hovers, 
- * sticky headers, and pixel-perfect smooth vertical offset targeting.
- */
 export class SciFiTable {
   constructor(columns, onCheckChange = null, onBatchCheckChange = null) {
     this.columns = columns;
     this.onCheckChange = onCheckChange;
     this.onBatchCheckChange = onBatchCheckChange;
-    this.sortColumnId = null;
+    
+    this.sortColumnId = null;       
+    this.sortColumnProperty = null; 
     this.sortAscending = true;
     this.onSortCallback = null;
     
+    this.rawRowsData = [];
+    this.currentCheckedIds = new Set();
+    this.activeBadgeFilter = null; 
+
     this.wrapper = document.createElement('div');
     this.el = document.createElement('table');
     this.tbody = document.createElement('tbody');
@@ -27,28 +28,15 @@ export class SciFiTable {
     this.wrapper.appendChild(this.el);
   }
 
-  get elNode() {
-    return this.wrapper;
-  }
+  get elNode() { return this.wrapper; }
 
   initContainerStyles() {
     const colors = STELLARIS_UI.colors;
     Object.assign(this.wrapper.style, {
-      width: '100%',
-      height: '100%',
-      overflowX: 'auto', 
-      overflowY: 'auto', 
-      boxSizing: 'border-box',
-      backgroundColor: colors.panelBg
+      width: '100%', height: '100%', overflowX: 'auto', overflowY: 'auto', boxSizing: 'border-box', backgroundColor: colors.panelBg
     });
-
     Object.assign(this.el.style, {
-      width: '100%',
-      minWidth: '1100px', 
-      borderCollapse: 'collapse',
-      fontFamily: STELLARIS_UI.font,
-      backgroundColor: 'transparent',
-      border: `1px solid ${colors.border}`
+      width: '100%', minWidth: '1100px', borderCollapse: 'collapse', fontFamily: STELLARIS_UI.font, backgroundColor: 'transparent', border: `1px solid ${colors.border}`
     });
   }
 
@@ -61,27 +49,15 @@ export class SciFiTable {
     this.el.innerHTML = '';
     const colors = STELLARIS_UI.colors;
     const thead = document.createElement('thead');
-    thead.style.backgroundColor = colors.panelBgLight;
-    thead.style.borderBottom = `2px solid ${colors.border}`;
-    thead.style.position = 'sticky';
-    thead.style.top = '0';
-    thead.style.zIndex = '2';
+    thead.style.cssText = `background-color: ${colors.panelBgLight}; border-bottom: 2px solid ${colors.border}; position: sticky; top: 0; z-index: 2;`;
 
     const tr = document.createElement('tr');
     this.columns.forEach(col => {
       const th = document.createElement('th');
       Object.assign(th.style, {
-        padding: '12px 14px',
-        textAlign: 'left',
-        fontSize: '11px',
-        fontWeight: 'bold',
-        color: colors.textHeader,
-        letterSpacing: '1px',
-        width: col.width || 'auto',
-        borderRight: `1px solid ${colors.border}`,
-        backgroundColor: colors.panelBgLight,
-        cursor: col.sortable ? 'pointer' : 'default',
-        userSelect: 'none'
+        padding: '12px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 'bold', color: colors.textHeader, letterSpacing: '1px',
+        width: col.width || 'auto', borderRight: `1px solid ${colors.border}`, backgroundColor: colors.panelBgLight,
+        cursor: col.sortable ? 'pointer' : 'default', userSelect: 'none'
       });
 
       if (col.id === 'checkbox') {
@@ -91,8 +67,14 @@ export class SciFiTable {
         headerCheck.addEventListener('change', (e) => this.toggleAllRows(e.target.checked));
         th.appendChild(headerCheck);
       } else {
+        const operationalKey = col.sortKey || col.id;
+        const targetPropertyKey = col.dataKey || col.id;
         let titleText = col.title.toUpperCase();
-        if (col.sortable && this.sortColumnId === col.id) {
+        
+        // FIXED: Check directional matching explicitly evaluating dedicated mathematical sort tag definitions properties
+        const isCurrentActive = (this.sortColumnProperty === col.id || this.sortColumnProperty === targetPropertyKey || (col.arrowKey && this.sortColumnProperty === col.dataKey));
+        
+        if (col.sortable && isCurrentActive) {
           titleText += this.sortAscending ? ' ▲' : ' ▼';
         }
         th.innerText = titleText;
@@ -101,14 +83,17 @@ export class SciFiTable {
           th.addEventListener('mouseenter', () => { th.style.color = colors.borderAccent; });
           th.addEventListener('mouseleave', () => { th.style.color = colors.textHeader; });
           th.addEventListener('click', () => {
-            if (this.sortColumnId === col.id) {
+            if (this.sortColumnProperty === targetPropertyKey) {
               this.sortAscending = !this.sortAscending;
             } else {
-              this.sortColumnId = col.id;
+              this.sortColumnId = operationalKey;
+              this.sortColumnProperty = targetPropertyKey;
               this.sortAscending = true;
             }
+            
             if (this.onSortCallback !== null) {
-              this.onSortCallback(this.sortColumnId, this.sortAscending);
+              // Pass the physical database property calculation key tag down to screen components routing layers
+              this.onSortCallback(col.id, this.sortAscending, targetPropertyKey);
             }
           });
         }
@@ -121,15 +106,50 @@ export class SciFiTable {
     this.el.appendChild(this.tbody);
   }
 
+  executeInternalSort() {
+    if (!this.sortColumnId) return;
+    const sortedData = UniversalSortEngine.sort(
+      this.rawRowsData, 
+      this.sortColumnId, 
+      this.sortAscending, 
+      this.activeBadgeFilter,
+      this.sortColumnProperty 
+    );
+    this.renderRows(sortedData);
+    this.buildHeader(); 
+
+    // FIXED: Safely reset the vertical scroll offset to the absolute top whenever any sorting layer executes
+    if (this.wrapper) {
+      this.wrapper.scrollTop = 0;
+    }
+  }
+
+  setBadgeSortFilter(sortKeyTag, badgeValue) {
+    this.sortColumnId = sortKeyTag;
+    this.sortColumnProperty = sortKeyTag; 
+    this.activeBadgeFilter = badgeValue;
+    this.sortAscending = false; 
+    this.executeInternalSort();
+  }
+
   setData(rows, checkedIdsSet = new Set()) {
+    this.rawRowsData = rows;
+    this.currentCheckedIds = checkedIdsSet;
+    if (this.sortColumnId) {
+      this.executeInternalSort();
+    } else {
+      this.renderRows(this.rawRowsData);
+    }
+  }
+
+  renderRows(rowsToRender) {
     this.tbody.innerHTML = '';
     this.rowsCache = [];
     const colors = STELLARIS_UI.colors;
 
-    rows.forEach(rowData => {
+    rowsToRender.forEach(rowData => {
       const tr = document.createElement('tr');
-      tr.style.borderBottom = `1px solid ${colors.border}`;
-      tr.style.transition = 'background 0.1s';
+      tr.style.cssText = `border-bottom: 1px solid ${colors.border}; transition: background 0.1s;`;
       tr.setAttribute('data-row-id', String(rowData.id));
 
       tr.addEventListener('mouseenter', () => { tr.style.backgroundColor = colors.rowHoverBg; });
@@ -137,37 +157,31 @@ export class SciFiTable {
 
       this.columns.forEach(col => {
         const td = document.createElement('td');
-        Object.assign(td.style, {
-          padding: '10px 14px',
-          verticalAlign: 'middle',
-          borderRight: `1px solid ${colors.border}`,
-          fontSize: '12px'
-        });
+        Object.assign(td.style, { padding: '10px 14px', verticalAlign: 'middle', borderRight: `1px solid ${colors.border}`, fontSize: '12px' });
 
         if (col.id === 'checkbox') {
           const rowCheck = document.createElement('input');
-          rowCheck.type = 'checkbox';
-          rowCheck.style.cursor = 'pointer';
-          rowCheck.checked = checkedIdsSet.has(String(rowData.id));
-          
+          rowCheck.type = 'checkbox'; rowCheck.style.cursor = 'pointer';
+          rowCheck.checked = this.currentCheckedIds.has(String(rowData.id));
           rowCheck.addEventListener('change', () => {
+            if (rowCheck.checked) this.currentCheckedIds.add(String(rowData.id));
+            else this.currentCheckedIds.delete(String(rowData.id));
             if (this.onCheckChange !== null) this.onCheckChange(rowData, rowCheck.checked);
           });
-          
           td.appendChild(rowCheck);
           this.rowsCache.push({ id: String(rowData.id), input: rowCheck });
         } else {
           if (col.render !== undefined && col.render !== null) {
-            td.appendChild(col.render(rowData[col.id], rowData));
+            td.appendChild(col.render(rowData[col.id], rowData, (targetTag, val) => this.setBadgeSortFilter(targetTag, val)));
           } else {
             td.innerText = rowData[col.id] !== undefined ? rowData[col.id] : '';
             td.style.color = colors.textMuted;
             td.style.fontWeight = 'bold';
+            td.style.fontSize = '12px';
           }
         }
         tr.appendChild(td);
       });
-
       this.tbody.appendChild(tr);
     });
   }
@@ -178,11 +192,11 @@ export class SciFiTable {
       if (row.input.checked !== isChecked) {
         row.input.checked = isChecked;
         batchedIds.push(row.id);
+        if (isChecked) this.currentCheckedIds.add(row.id);
+        else this.currentCheckedIds.delete(row.id);
       }
     });
-    if (this.onBatchCheckChange && batchedIds.length > 0) {
-      this.onBatchCheckChange(batchedIds, isChecked);
-    }
+    if (this.onBatchCheckChange && batchedIds.length > 0) this.onBatchCheckChange(batchedIds, isChecked);
   }
 
   scrollToRowId(id) {

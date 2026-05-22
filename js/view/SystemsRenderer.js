@@ -1,6 +1,6 @@
-// js/view/SystemsRenderer.js
 import { STELLARIS_UI } from './StellarisUiConstants.js';
 import { SYSTEM_STATIC_REGISTRY } from '../semantic/SystemConstants.js';
+import { SciFiBadge } from './components/SciFiBadge.js';
 
 /**
  * SystemsRenderer
@@ -8,29 +8,69 @@ import { SYSTEM_STATIC_REGISTRY } from '../semantic/SystemConstants.js';
  * and activated hyperlane transit channels into stylized badges and grids.
  */
 export class SystemsRenderer {
-  static renderStar(v, row) {
+  static renderStar(v, row, onCustomSortTrigger) {
     const el = document.createElement('div'); 
-    el.style.cursor = 'help';
+    el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
+    
     const starObj = row?.star || null;
-    const currentType = v || starObj?.type || null;
-    if (!currentType) { el.innerText = "☀️ Special Anomaly"; return el; }
+    
+    let starTokens = [];
+    if (Array.isArray(v)) {
+      starTokens = v;
+    } else if (typeof v === 'string' && v.trim() !== "") {
+      starTokens = v.split("/").map(s => s.trim()).filter(Boolean);
+    } else if (starObj?.type) {
+      starTokens = String(starObj.type).split("/").map(s => s.trim()).filter(Boolean);
+    }
 
-    const tokens = currentType.split(" / "); 
-    const icons = [];
-    tokens.forEach(t => {
+    if (starTokens.length === 0) { 
+      el.innerText = "✖"; 
+      el.style.color = STELLARIS_UI.colors.badgeEmpty; 
+      return el; 
+    }
+
+    starTokens.forEach(trimmedStar => {
       let ico = "☀️"; 
-      const low = t.toLowerCase();
+      const low = trimmedStar.toLowerCase();
       if (low.includes("black_hole") || low.includes("blackhole") || low.includes("black hole")) ico = "🕳️";
       else if (low.includes("neutron")) ico = "⚛️";
       else if (low.includes("pulsar")) ico = "⚡";
       else if (low.includes("giant") || low.includes("supergiant") || low.includes("nova")) ico = "💥";
-      icons.push(ico);
+
+      // FIXED: Advanced Title Casing supporting descriptive words (e.g. 'M Giant Star')
+      let displayLabel = trimmedStar
+        .split('_')
+        .map(word => {
+          const cleanWord = word.trim();
+          // Ensure special game keywords expand to full text parameters correctly
+          if (cleanWord.toLowerCase() === "star") return "Star";
+          if (cleanWord.toLowerCase() === "hole") return "Hole";
+          return cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1).toLowerCase();
+        })
+        .join(' ');
+
+      // FIXED: Append missing structural suffix tokens for shorthand game engines assets definitions
+      if (!displayLabel.toLowerCase().includes("star") && 
+          !displayLabel.toLowerCase().includes("hole") && 
+          !displayLabel.toLowerCase().includes("pulsar")) {
+        displayLabel += displayLabel.toLowerCase().includes("world") ? " Star" : " World Star";
+      }
+
+      const starBadge = SciFiBadge.create(
+        `${ico} ${displayLabel}`,
+        trimmedStar,
+        STELLARIS_UI.colors.textHeader,
+        'badge',
+        onCustomSortTrigger
+      );
+      
+      const bBreakdown = starObj?.resourcesBreakdown || { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
+      const idsStr = starObj?.starIds?.length > 0 ? starObj.starIds.join(", ") : (starObj ? starObj.id : "Unknown");
+      starBadge.title = `Star ID(s): ${idsStr}\nClassification: ${displayLabel}\n\nStellar Resource Payload:\n⚡ Energy: +${bBreakdown.e}\n⛏️ Minerals: +${bBreakdown.m}\n⚛️ Physics: +${bBreakdown.p}\n🍃 Society: +${bBreakdown.s}\n⚙️ Engineering: +${bBreakdown.g}\n\n[ CLICK TO CLUSTER ROWS MATCHING THIS CLASS ]`;
+      
+      el.appendChild(starBadge);
     });
 
-    el.innerText = `${icons.join(" ")} ${currentType}`;
-    const b = starObj?.resourcesBreakdown || { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
-    const idsStr = starObj?.starIds?.length > 0 ? starObj.starIds.join(", ") : (starObj ? starObj.id : "Unknown");
-    el.title = `Star ID(s): ${idsStr}\nName: ${starObj?.name || "Unknown"}\nStar Yields:\n⚡ Energy: +${b.e}\n⛏️ Minerals: +${b.m}\n⚛️ Physics: +${b.p}\n🍃 Society: +${b.s}\n⚙️ Engineering: +${b.g}`;
     return el;
   }
 
@@ -47,6 +87,7 @@ export class SystemsRenderer {
     s.style.fontWeight = "bold";
     if (row?.hasMoltenWorld) {
       s.innerText = `✓ (${row.arcEligibleCount || 0})`; 
+      // FIXED: Swapped out broken variable assignment loop shorthand with standard global token pointer path
       s.style.color = STELLARIS_UI.colors.high;
       s.title = `System contains a Molten World.\nTotal celestial objects eligible for Arc Furnace deposits: ${row.arcEligibleCount || 0}`;
     } else { 
@@ -60,7 +101,8 @@ export class SystemsRenderer {
   static renderSplitResources(v) {
     const container = document.createElement('div'); 
     container.style.cssText = 'display:flex; gap:6px; align-items:center; font-weight:bold; font-size:11px;';
-    const p = v || { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
+    const p = (v && v.resourcesBreakdown) ? v.resourcesBreakdown : (v || { e:0, m:0, a:0, p:0, s:0, g:0, n:0 });
+    
     const items = [
       { cond: p.e > 0, val: p.e, ico: "⚡", col: STELLARIS_UI.colors.mid, label: "Energy" },
       { cond: p.m > 0, val: p.m, ico: "⛏️", col: "#e88024", label: "Minerals" },
@@ -89,6 +131,17 @@ export class SystemsRenderer {
   }
 
   static renderStarYields(v, row) { 
+    if (Array.isArray(row?.stars)) {
+      const compiledBreakdown = { e:0, m:0, a:0, p:0, s:0, g:0, n:0 };
+      row.stars.forEach(s => {
+        const b = s.resourcesBreakdown || {};
+        compiledBreakdown.e += (b.e || 0); compiledBreakdown.m += (b.m || 0);
+        compiledBreakdown.a += (b.a || 0); compiledBreakdown.p += (b.p || 0);
+        compiledBreakdown.s += (b.s || 0); compiledBreakdown.g += (b.g || 0);
+        compiledBreakdown.n += (b.n || 0);
+      });
+      return SystemsRenderer.renderSplitResources(compiledBreakdown);
+    }
     return SystemsRenderer.renderSplitResources(row?.star?.resourcesBreakdown || null); 
   }
 
@@ -100,7 +153,6 @@ export class SystemsRenderer {
       return el; 
     }
     v.forEach(m => {
-      const b = document.createElement('span'); 
       const raw = String(m.rawType || "").toLowerCase();
       let icon = "🏗️"; 
       let name = m.type;
@@ -109,17 +161,20 @@ export class SystemsRenderer {
         icon = match.icon; 
         name = match.name; 
       }
-      if (raw.includes("ruined")) name += " [Ruined]";
+      
+      const isRuined = raw.includes("ruined");
+      if (isRuined) name += " [Ruined]";
       else if (raw.includes("_0") || raw.includes("_1") || raw.includes("framework") || raw.includes("core")) name += " [Frame]";
 
-      b.innerText = `${icon} ${name}`;
-      b.style.cssText = STELLARIS_UI.styles.interactiveBadge + `background:${STELLARIS_UI.colors.panelBgLight}; border:1px solid ${raw.includes("ruined") ? STELLARIS_UI.colors.border : STELLARIS_UI.colors.borderAccent};`;
-      b.title = `Structure ID: ${m.id}\nRaw Class: ${m.rawType}\nEmpire ID: ${m.owner}\n\n[ CLICK TO SORT BY THIS STRUCTURE ]`;
-      b.onclick = (e) => { 
-        e.stopPropagation(); 
-        if (onCustomSortTrigger) onCustomSortTrigger('mega_filter', m.rawType); 
-      };
-      el.appendChild(b);
+      const borderCol = isRuined ? 'rgba(160, 175, 185, 0.75)' : STELLARIS_UI.colors.borderAccent;
+      const badgeNode = SciFiBadge.create(`${icon} ${name}`, m.rawType, borderCol, 'badge', onCustomSortTrigger);
+      
+      if (isRuined) {
+        badgeNode.style.color = '#7d8e95'; 
+      }
+      
+      badgeNode.title = `Structure ID: ${m.id}\nRaw Class: ${m.rawType}\nEmpire ID: ${m.owner}\n\n[ CLICK TO SORT BY THIS STRUCTURE ]`;
+      el.appendChild(badgeNode);
     });
     return el;
   }
@@ -127,36 +182,29 @@ export class SystemsRenderer {
   static renderFastTravel(v, row, onCustomSortTrigger) {
     const el = document.createElement('div'); 
     el.style.cssText = STELLARIS_UI.styles.flexCenterWrap;
-    if (!v) { 
+    if (!v || (!v.wormhole && !v.gate && !v.lgate && !v.shroud)) { 
       el.innerText = "✖"; 
       el.style.color = STELLARIS_UI.colors.badgeEmpty; 
       return el; 
     }
     const nodes = [
-      { cond: v.wormhole, id: 'ft_wormhole', ico: "🌀", label: "Wormhole" },
-      { cond: v.gate, id: 'ft_gate', ico: "🚪", label: "Gateway" },
-      { cond: v.lgate, id: 'ft_lgate', ico: "🔒", label: "L-Gate" },
-      { cond: v.shroud, id: 'ft_shroud', ico: "🔮", label: "Shroud Tunnel" }
+      { cond: v.wormhole, token: 'wormhole', ico: "🌀", label: "Wormhole" },
+      { cond: v.gate, token: 'gate', ico: "🚪", label: "Gateway" },
+      { cond: v.lgate, token: 'lgate', ico: "🔒", label: "L-Gate" },
+      { cond: v.shroud, token: 'shroud', ico: "🔮", label: "Shroud Tunnel" }
     ];
-    let hasAny = false;
     nodes.forEach(n => {
       if (n.cond) {
-        hasAny = true; 
-        const b = document.createElement('span'); 
-        b.innerText = `${n.ico} ${n.label.toUpperCase()}`;
-        b.style.cssText = STELLARIS_UI.styles.interactiveBadge + `background:${STELLARIS_UI.colors.panelBgLight}; border:1px solid ${STELLARIS_UI.colors.borderAccent}; color:${STELLARIS_UI.colors.borderAccent};`;
-        b.title = `Transit Node Type: ${n.label}\n\n[ CLICK TO FILTER BY THIS TRANSIT NETWORK ]`;
-        b.onclick = (e) => { 
-          e.stopPropagation(); 
-          if (onCustomSortTrigger) onCustomSortTrigger(n.id, true); 
-        };
-        el.appendChild(b);
+        const badgeNode = SciFiBadge.create(
+          `${n.ico} ${n.label.toUpperCase()}`, 
+          n.token, 
+          STELLARIS_UI.colors.borderAccent, 
+          'badge', 
+          onCustomSortTrigger
+        );
+        el.appendChild(badgeNode);
       }
     });
-    if (!hasAny) { 
-      el.innerText = "✖"; 
-      el.style.color = STELLARIS_UI.colors.badgeEmpty; 
-    }
     return el;
   }
 }

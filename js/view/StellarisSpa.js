@@ -1,4 +1,3 @@
-// js/view/StellarisSpa.js
 import { STELLARIS_UI } from './StellarisUiConstants.js';
 import { SciFiButton } from './components/SciFiButton.js';
 import { SciFiNavGroup } from './SciFiNavGroup.js';
@@ -23,9 +22,10 @@ export class StellarisSpa {
     this.mapCameraStateCache = null; 
     this.saveData = { empires: [], systems: [] };
 
-    this.sortEmpiresId = 'id'; 
+    // Initialized to the generic abstract tags used by UniversalSortEngine
+    this.sortEmpiresId = 'numeric_metric'; 
     this.sortEmpiresAsc = true;
-    this.sortSystemsId = 'id'; 
+    this.sortSystemsId = 'numeric_metric'; 
     this.sortSystemsAsc = true;
 
     this.allEmpiresCheckedCache = false;
@@ -85,6 +85,11 @@ export class StellarisSpa {
     this.contentViewport = document.createElement('div');
     this.contentViewport.style.cssText = `flex:1; background:${colors.panelBg}; border:1px solid ${colors.border}; overflow:hidden; position:relative;`;
     this.root.appendChild(this.contentViewport);
+
+    this.sortEmpiresId = 'id'; 
+    this.sortEmpiresAsc = true;
+    this.sortSystemsId = 'id'; 
+    this.sortSystemsAsc = true;
   }
 
   handleDataRefresh(data, statusText) {
@@ -130,8 +135,8 @@ export class StellarisSpa {
         const masterInput = this.activeScreenInstance.tableInstance.el.querySelector('thead input[type="checkbox"]');
         if (masterInput !== null) {
           masterInput.checked = this.allEmpiresCheckedCache;
+          masterInput.addEventListener('change', (e) => { this.allEmpiresCheckedCache = e.target.checked; });
         }
-        masterInput.addEventListener('change', (e) => { this.allEmpiresCheckedCache = e.target.checked; });
       }
     }
     if (screenId === 2) {
@@ -148,8 +153,8 @@ export class StellarisSpa {
         const masterInput = this.activeScreenInstance.tableInstance.el.querySelector('thead input[type="checkbox"]');
         if (masterInput !== null) {
           masterInput.checked = this.allSystemsCheckedCache;
+          masterInput.addEventListener('change', (e) => { this.allSystemsCheckedCache = e.target.checked; });
         }
-        masterInput.addEventListener('change', (e) => { this.allSystemsCheckedCache = e.target.checked; });
       }
 
       if (this.targetScrollSystemId !== null && this.activeScreenInstance.tableInstance) {

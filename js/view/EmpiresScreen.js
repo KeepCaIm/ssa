@@ -1,12 +1,11 @@
-// js/view/EmpiresScreen.js
 import { SciFiTable } from './components/SciFiTable.js';
 import { EmpiresRenderer } from './EmpiresRenderer.js';
 import { STELLARIS_UI } from './StellarisUiConstants.js';
 
 /**
  * EmpiresScreen
- * Coordinates the empires overview matrix grid, manages sorting caches persistent 
- * across view switches, and binds custom presentation token maps.
+ * Coordinates the empires overview matrix grid, handles sorting updates via 
+ * unified engine integration, and displays ideology vector tokens.
  */
 export class EmpiresScreen {
   constructor(viewport, saveData, activeSelectionStateSet, onSelectionMatrixChange, initialSortId, initialSortAsc, onSortStateChange) {
@@ -14,7 +13,9 @@ export class EmpiresScreen {
     this.saveData = saveData;
     this.activeSelectionStateSet = activeSelectionStateSet; 
     this.onSelectionMatrixChange = onSelectionMatrixChange;
-    this.currentSortId = initialSortId || 'id'; 
+    
+    this.currentSortId = (initialSortId === 'id') ? 'numeric_metric' : (initialSortId || 'numeric_metric'); 
+    this.currentSortProperty = 'id'; 
     this.currentSortAsc = initialSortAsc !== undefined ? initialSortAsc : true;
     this.onSortStateChange = onSortStateChange; 
     this.tableInstance = null;
@@ -25,18 +26,18 @@ export class EmpiresScreen {
     this.viewport.innerHTML = '';
     const cols = [
       { id: 'checkbox', title: '', width: '3%', sortable: false },
-      { id: 'id', title: 'ID', width: '5%', sortable: true },
-      { id: 'tag', title: 'TAG', width: '8%', sortable: true },
-      { id: 'name', title: 'Empire Title / Name', width: '22%', sortable: true, render: v => {
+      { id: 'id', sortKey: 'numeric_metric', title: 'ID', width: '5%', sortable: true },
+      { id: 'tag', sortKey: 'string_lexical', title: 'TAG', width: '8%', sortable: true },
+      { id: 'name', sortKey: 'string_lexical', title: 'Empire Title / Name', width: '22%', sortable: true, render: v => {
           const d = document.createElement('div'); 
           d.innerText = v; 
           d.style.cssText = `color:${STELLARIS_UI.colors.text}; font-weight:bold;`; 
           return d;
       }},
-      { id: 'type', title: 'Classification Type', width: '14%', sortable: true, render: (v, r) => EmpiresRenderer.renderType(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
-      { id: 'ethics', title: 'Governing Ethics Profile', width: '22%', sortable: true, render: (v, r) => EmpiresRenderer.renderEthics(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
-      { id: 'civics', title: 'Active Civic Models', width: '20%', sortable: true, render: (v, r) => EmpiresRenderer.renderCivics(v, r, (type, val) => this.executeCustomBadgeSort(type, val)) },
-      { id: 'score', title: 'Score', width: '6%', sortable: true, render: v => {
+      { id: 'type', sortKey: 'badge', title: 'Classification Type', width: '14%', sortable: true, render: (v, r, s) => EmpiresRenderer.renderType(v, r, s) },
+      { id: 'ethics', sortKey: 'badge', title: 'Governing Ethics Profile', width: '22%', sortable: true, render: (v, r, s) => EmpiresRenderer.renderEthics(v, r, s) },
+      { id: 'civics', sortKey: 'badge', title: 'Active Civic Models', width: '20%', sortable: true, render: (v, r, s) => EmpiresRenderer.renderCivics(v, r, s) },
+      { id: 'score', sortKey: 'numeric_metric', title: 'Score', width: '6%', sortable: true, render: v => {
           const s = document.createElement('span');
           s.innerText = Math.round(v).toLocaleString();
           s.style.cssText = `color:${STELLARIS_UI.colors.textHeader}; font-weight:bold;`;
@@ -50,21 +51,45 @@ export class EmpiresScreen {
       } else {
         this.activeSelectionStateSet.delete(String(rowData.id));
       }
-      if (this.onSelectionMatrixChange !== null && this.onSelectionMatrixChange !== undefined) {
+      if (this.onSelectionMatrixChange) {
         this.onSelectionMatrixChange();
       }
     });
 
-    this.tableInstance.onSort((sortId, isAsc) => {
+    this.tableInstance.onSort((sortPropertyId, isAsc) => {
       this.customFilterTargetValue = null;
-      this.currentSortId = sortId; 
-      this.currentSortAsc = (sortId === 'score') ? !isAsc : isAsc;
+      this.tableInstance.activeBadgeFilter = null;
       
-      if (this.onSortStateChange !== null && this.onSortStateChange !== undefined) {
-        this.onSortStateChange(this.currentSortId, this.currentSortAsc); 
+      const matchedColumn = cols.find(c => c.id === sortPropertyId);
+      const operationalTag = matchedColumn ? (matchedColumn.sortKey || sortPropertyId) : sortPropertyId;
+
+      if (sortPropertyId !== this.currentSortProperty) {
+        const descendingDefaultProperties = ['score', 'type', 'ethics', 'civics'];
+        this.currentSortAsc = descendingDefaultProperties.includes(sortPropertyId) ? false : true;
+      } else {
+        this.currentSortAsc = isAsc;
       }
-      this.refreshDataPayload();
+
+      this.currentSortId = operationalTag;
+      this.currentSortProperty = sortPropertyId;
+      
+      this.tableInstance.sortColumnId = this.currentSortId;
+      this.tableInstance.sortColumnProperty = this.currentSortProperty;
+      this.tableInstance.sortAscending = this.currentSortAsc;
+
+      if (this.onSortStateChange) {
+        this.onSortStateChange(this.currentSortProperty, this.currentSortAsc); 
+      }
+      this.tableInstance.executeInternalSort();
     });
+
+    this.tableInstance.sortColumnId = this.currentSortId;
+    this.tableInstance.sortColumnProperty = this.currentSortProperty;
+    this.tableInstance.sortAscending = this.currentSortAsc;
+    
+    if (this.customFilterTargetValue) {
+      this.tableInstance.activeBadgeFilter = this.customFilterTargetValue;
+    }
 
     this.viewport.appendChild(this.tableInstance.elNode); 
     this.refreshDataPayload();
@@ -72,63 +97,40 @@ export class EmpiresScreen {
 
   executeCustomBadgeSort(sortType, targetValue) {
     this.currentSortId = sortType;
+    this.currentSortProperty = sortType;
     this.currentSortAsc = false;
     this.customFilterTargetValue = targetValue;
-    if (this.onSortStateChange !== null && this.onSortStateChange !== undefined) {
+    
+    if (this.tableInstance) {
+      this.tableInstance.sortColumnId = sortType;
+      this.tableInstance.sortColumnProperty = sortType;
+      this.tableInstance.sortAscending = false;
+      this.tableInstance.activeBadgeFilter = targetValue;
+    }
+    
+    if (this.onSortStateChange) {
       this.onSortStateChange(sortType, false);
     }
     this.refreshDataPayload();
   }
 
   refreshDataPayload() {
-    let rows = (this.saveData.empires || []).map(emp => ({ ...emp }));
-    const sid = this.currentSortId; 
-    const mult = this.currentSortAsc ? 1 : -1;
-
-    rows.sort((a, b) => {
-      if (sid === 'ethics') {
-        const hasA = a.ethics !== undefined && a.ethics.length !== 0 && a.ethics.length > 0;
-        const hasB = b.ethics !== undefined && b.ethics.length !== 0 && b.ethics.length > 0;
-        if (hasA !== hasB) return hasA ? -1 : 1;
-        return (parseFloat(a.ethics?.length || 0) - parseFloat(b.ethics?.length || 0)) * mult;
-      }
-      else if (sid === 'civics') {
-        const hasA = a.civics !== undefined && a.civics.length !== 0 && a.civics.length > 0;
-        const hasB = b.civics !== undefined && b.civics.length !== 0 && b.civics.length > 0;
-        if (hasA !== hasB) return hasA ? -1 : 1;
-        return (parseFloat(a.civics?.length || 0) - parseFloat(b.civics?.length || 0)) * mult;
-      }
-      else if (sid === 'type_filter') {
-        const hasA = String(a.type).toLowerCase() === String(this.customFilterTargetValue).toLowerCase() ? 1 : 0;
-        const hasB = String(b.type).toLowerCase() === String(this.customFilterTargetValue).toLowerCase() ? 1 : 0;
-        if (hasA === hasB) return String(a.name).localeCompare(String(b.name));
-        return (hasA - hasB) * mult;
-      }
-      else if (sid === 'ethic_filter') {
-        const hasA = a.ethics?.some(e => String(e).toLowerCase() === String(this.customFilterTargetValue).toLowerCase()) ? 1 : 0;
-        const hasB = b.ethics?.some(e => String(e).toLowerCase() === String(this.customFilterTargetValue).toLowerCase()) ? 1 : 0;
-        if (hasA === hasB) return String(a.name).localeCompare(String(b.name));
-        return (hasA - hasB) * mult;
-      }
-      else if (sid === 'civic_filter') {
-        const hasA = a.civics?.some(c => String(c).toLowerCase() === String(this.customFilterTargetValue).toLowerCase()) ? 1 : 0;
-        const hasB = b.civics?.some(c => String(c).toLowerCase() === String(this.customFilterTargetValue).toLowerCase()) ? 1 : 0;
-        if (hasA === hasB) return String(a.name).localeCompare(String(b.name));
-        return (hasA - hasB) * mult;
-      }
-
-      if (sid === 'id' || sid === 'score') {
-        return (parseFloat(a[sid] || 0) - parseFloat(b[sid] || 0)) * mult;
-      }
-      return String(a[sid] || "").toLowerCase().localeCompare(String(b[sid] || "").toLowerCase()) * mult;
+    const rows = (this.saveData.empires || []).map(emp => {
+      // FIXED: Force alphabetical sort inside the row variables prior to rendering visual elements
+      const rawEthics = Array.isArray(emp.ethics) ? [...emp.ethics] : [];
+      const rawCivics = Array.isArray(emp.civics) ? [...emp.civics] : [];
+      
+      return {
+        ...emp,
+        type: emp.type || "",
+        ethics: rawEthics.sort((a, b) => String(a).localeCompare(String(b))),
+        civics: rawCivics.sort((a, b) => String(a).localeCompare(String(b)))
+      };
     });
 
-    this.tableInstance.sortColumnId = this.currentSortId; 
-    this.tableInstance.sortAscending = this.currentSortAsc;
-    this.tableInstance.buildHeader(); 
     this.tableInstance.setData(rows, this.activeSelectionStateSet);
 
-    if (this.tableInstance !== null && this.tableInstance.wrapper !== null) {
+    if (this.tableInstance && this.tableInstance.wrapper) {
       this.tableInstance.wrapper.scrollTop = 0;
     }
   }
