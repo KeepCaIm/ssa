@@ -7,12 +7,7 @@ import { STELLARIS_UI } from '../StellarisUiConstants.js';
 export const toTitleCaseStar = (trimmedStar) => {
   return trimmedStar
     .split('_')
-    .map(word => {
-      const cw = word.trim().toLowerCase();
-      if (cw === "star") return "Star";
-      if (cw === "hole") return "Hole";
-      return cw.charAt(0).toUpperCase() + cw.slice(1);
-    })
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
 

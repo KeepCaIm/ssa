@@ -45,8 +45,8 @@ export class MapScreen {
       { id: 'none', label: 'STANDARD MAP' },
       { id: 'wormhole', label: '🌀 WORMHOLES' },
       { id: 'gate', label: '🚪 GATEWAYS' },
-      { id: 'lgate', label: '🔒 L-GATES' },
-      { id: 'shroud', label: '👁️ SHROUD TUNNELS' }
+      { id: 'lgate', label: '🔲 L-GATES' },
+      { id: 'shroud', label: '⛩️ SHROUD TUNNELS' }
     ];
 
     options.forEach(opt => {

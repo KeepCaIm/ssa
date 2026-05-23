@@ -28,7 +28,7 @@ export class EmpiresScreen {
       { id: 'checkbox', title: '', width: '3%', sortable: false },
       { id: 'id', sortKey: 'numeric_metric', title: 'ID', width: '5%', sortable: true },
       { id: 'tag', sortKey: 'string_lexical', title: 'TAG', width: '8%', sortable: true },
-      { id: 'name', sortKey: 'string_lexical', title: 'Empire Title / Name', width: '22%', sortable: true, render: v => {
+      { id: 'name', sortKey: 'string_lexical', title: 'Empire Name', width: '22%', sortable: true, render: v => {
           const d = document.createElement('div'); 
           d.innerText = v; 
           d.style.cssText = `color:${STELLARIS_UI.colors.text}; font-weight:bold;`; 

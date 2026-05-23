@@ -95,12 +95,12 @@ export class SystemsRenderer {
     if (!v || (!v.wormhole && !v.gate && !v.lgate && !v.shroud)) { el.innerText = "✖"; el.style.color = STELLARIS_UI.colors.badgeEmpty; return el; }
     
     [
-      { cond: v.wormhole, token: 'wormhole', ico: "🌀", label: "Wormhole" },
-      { cond: v.gate, token: 'gate', ico: "🚪", label: "Gateway" },
-      { cond: v.lgate, token: 'lgate', ico: "🔒", label: "L-Gate" },
-      { cond: v.shroud, token: 'shroud', ico: "🔮", label: "Shroud Tunnel" }
+      { cond: v.wormhole, token: 'wormhole', ico: "🌀", label: "WH" },
+      { cond: v.gate, token: 'gate', ico: "🚪", label: "Gate" },
+      { cond: v.lgate, token: 'lgate', ico: "🔲", label: "L-Gate" },
+      { cond: v.shroud, token: 'shroud', ico: "⛩️", label: "Shroud Tunnel" }
     ].forEach(n => {
-      if (n.cond) el.appendChild(SciFiBadge.create(`${n.ico} ${n.label.toUpperCase()}`, n.token, STELLARIS_UI.colors.borderAccent, 'badge', onCustomSortTrigger));
+      if (n.cond) el.appendChild(SciFiBadge.create(`${n.ico}\xa0${n.label}`, n.token, STELLARIS_UI.colors.borderAccent, 'badge', onCustomSortTrigger));
     });
     return el;
   }
