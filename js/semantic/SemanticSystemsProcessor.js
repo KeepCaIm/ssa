@@ -50,9 +50,10 @@ export class SemanticSystemsProcessor {
       
       let ownerId = "none"; 
       let sbLevel = "none";
-      
+
       if (s.starbases) {
-        const pSbId = String(s.starbases._list ? s.starbases._list : (Array.isArray(s.starbases) ? s.starbases : (s.starbases.key || s.starbases.value || s))).trim();
+        const pSbId = String(s.starbases._list?.[0]);
+
         if (pSbId && pSbId !== "4294967295") {
           if (fleetMap[shipMap[sbMap[pSbId]]]) ownerId = fleetMap[shipMap[sbMap[pSbId]]];
           const rec = rootJson.starbase_mgr?.starbases?.[pSbId];

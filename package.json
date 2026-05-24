@@ -1,12 +1,10 @@
 {
   "devDependencies": {
-    "concurrently": "^9.2.1",
-    "esbuild": "^0.28.0",
-    "live-server": "^1.2.2"
+    "vite": "^5.4.21"
   },
   "scripts": {
-    "build:watch": "esbuild js/app.js --bundle --minify --sourcemap --outfile=build/bundle.js --watch",
-    "server": "live-server",
-    "start": "concurrently \"npm run build:watch\" \"npm run server\""
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   }
 }
